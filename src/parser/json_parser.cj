@@ -1,0 +1,191 @@
+package json4cj.parser
+
+import std.ast.*
+import std.collection.{ArrayList, reduce}
+
+protected class JsonParser {
+    private let input: Tokens
+    private var pos: Int64 = 0
+    private var loopCount = 0
+
+    public init(input: Tokens) {
+        this.input = input
+    }
+
+    public prop peek: Token {
+        get() {
+            input[this.pos]
+        }
+    }
+
+    public prop next: Token {
+        get() {
+            this.pos++
+            input[this.pos - 1]
+        }
+    }
+
+    public func skipWhiteSpace(): Unit {
+        while (this.pos < this.input.size && this.peek.kind == NL) {
+            this.pos++
+        }
+    }
+
+    public func parseWhole(): Tokens {
+        let result = this.parseValue()
+        this.skipWhiteSpace()
+        if (this.pos != this.input.size) {
+            diagReport(DiagReportLevel.ERROR, input[this.pos..], 'Excepted no more data here',
+                'Unexpected trailing data after JSON value')
+            throw ASTException('Unexpected trailing data after JSON value')
+        }
+        result
+    }
+
+    public func parseValue(): Tokens {
+        this.skipWhiteSpace()
+        match (this.peekExprFragment()) {
+            // 长度>=2的表达式一定不是纯json值
+            case Some((expr, index)) where index - this.pos != 1 =>
+                this.pos = index
+                quote(_castJsonValue($(expr)))
+            // 长度==1，且Token类型是IDENTIFIER(非null)的表达式一定不是纯json值
+            case Some((expr, index)) => match (expr.toTokens()[0].kind) {
+                case THISTYPE | THIS =>
+                    this.pos = index
+                    quote(_castJsonValue($(expr)))
+                case IDENTIFIER where this.peek.value != "null" =>
+                    this.pos = index
+                    quote(_castJsonValue($(expr)))
+                case _ => this.parseJsonValue()
+            }
+            case _ => this.parseJsonValue()
+        }
+    }
+
+    public func parseJsonValue(): Tokens {
+        let single = this.next
+        match (single.kind) {
+            case STRING_LITERAL => quote(JsonString($single))
+            case INTEGER_LITERAL => quote(JsonInt($single))
+            case FLOAT_LITERAL => quote(JsonFloat($single))
+            case IDENTIFIER where single.value == "null" => quote(JsonNull())
+            case BOOL_LITERAL => quote(JsonBool($single))
+            case LSQUARE => this.parseArray()
+            case LCURL => this.parseObject()
+            case _ =>
+                diagReport(DiagReportLevel.ERROR, input[(this.pos - 1)..this.pos],
+                    'Failed to parse Json Value "${single.value}"', "Illegal value")
+                throw ASTException('Failed to parse "${single.value}"')
+        }
+    }
+
+    public func parseArray(): Tokens {
+        this.skipWhiteSpace()
+        let list = ArrayList<Tokens>()
+        while (this.pos < this.input.size && this.peek.kind != RSQUARE) {
+            if (this.peek.kind == COMMA) {
+                this.pos++
+                this.skipWhiteSpace()
+                continue
+            }
+            list.append(this.parseValue())
+            this.skipWhiteSpace()
+        }
+        let elems = match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
+            case Some(v) => Token(NL) + v + Token(NL)
+            case None => Tokens()
+        }
+        if (this.peek.kind != RSQUARE) {
+            diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)], 'Excepted "]", found ${this.peek.value}',
+                'Failed to parse "${this.peek.value}"')
+            throw ASTException('Failed to parse "${this.peek.value}"')
+        }
+        this.pos++
+        quote(JsonArray([$elems]))
+    }
+
+    public func parseObject(): Tokens {
+        this.skipWhiteSpace()
+        let list = ArrayList<Tokens>()
+        while (this.peek.kind != RCURL && this.pos < this.input.size) {
+            if (this.peek.kind == COMMA) {
+                this.pos++
+                this.skipWhiteSpace()
+                continue
+            }
+            // key: value
+            // key
+            let key = match (this.peekExprBeforeColon()) {
+                case Some((expr, index)) =>
+                    this.pos = index
+                    expr
+                case None where this.peek.kind == STRING_LITERAL => this.next.toTokens()
+                case None where this.peek.kind == IDENTIFIER && this.peek.value != "null" => this.next.toTokens()
+                case _ =>
+                    diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)],
+                        'Excepted String literal or String expression, found ${this.peek.value}',
+                        'Failed to parse "${this.peek.value}"')
+                    throw ASTException('Failed to parse "${this.peek.value}"')
+            }
+            this.skipWhiteSpace()
+            // :
+            if (this.peek.kind != COLON) {
+                diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)],
+                    'Excepted ":", found ${this.peek.value}', 'Failed to parse "${this.peek.value}"')
+                throw ASTException('Failed to parse "${this.peek.value}"')
+            }
+            this.pos++
+            this.skipWhiteSpace()
+            // value
+            let value = parseValue()
+            list.append(quote(($key,$value)))
+            this.skipWhiteSpace()
+        }
+        let pairs = match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
+            case Some(v) => Token(NL) + v + Token(NL)
+            case None => Tokens()
+        }
+        if (this.peek.kind != RCURL) {
+            diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)], 'Excepted "}", found ${this.peek.value}',
+                'Failed to parse "${this.peek.value}"')
+            throw ASTException('Failed to parse "${this.peek.value}"')
+        }
+        this.pos++
+        quote(JsonObject(HashMap<String, JsonValue>([$pairs])))
+    }
+
+    // 注意：parseExprFragment会顺便解析结尾的换行符，要去掉
+    public func peekExprFragment(): Option<(Tokens, Int64)> {
+        try {
+            var index: Int64 = 0
+            (_, index) = parseExprFragment(this.input, startFrom: this.pos)
+            index -= 1
+            for (_ in 0..this.input.size) {
+                if (this.input[index].kind == NL) {
+                    index -= 1
+                } else {
+                    break
+                }
+            }
+            index++
+            (this.input[this.pos..index], index)
+        } catch (e: ParseASTException) {
+            None
+        }
+    }
+
+    // 也要去掉换行符
+    // 专用来解析object中key的表达式，因为正常的parseExprFragment遇到 : 会报错。。。。
+    public func peekExprBeforeColon(): Option<(Tokens, Int64)> {
+        var p = this.pos
+        while (p < this.input.size && this.input[p].kind != COLON) {
+            p++
+        }
+        try {
+            (parseExpr(this.input[this.pos..p]).toTokens(), p)
+        } catch (e: ParseASTException) {
+            None
+        }
+    }
+}

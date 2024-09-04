@@ -1,0 +1,4 @@
+/target
+.cache
+.vscode
+cjlintignore.cfg
