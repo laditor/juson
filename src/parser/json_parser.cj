@@ -68,16 +68,19 @@ protected class JsonParser {
         result
     }
 
+    // 可以直接解析为Json值的Token用parseJsonValue处理，其他的表达式/变量调用toJsonValue()
     public func parseValue(): Tokens {
         this.skipWhiteSpace()
         match (this.peekExprFragment()) {
+            // 特殊规则：遇到 [ 统一视为jsonArray，因为语法与Array字面量冲突。在宏中请用Array<T>()
+            case Some((expr, index)) where this.peek.kind == LSQUARE => this.parseJsonValue()
             // 长度>=2的表达式一定不是纯json值
             case Some((expr, index)) where index - this.pos != 1 =>
                 this.pos = index
                 quote(($(expr)).toJsonValue())
-            // 长度==1，且Token类型是IDENTIFIER(非null)的表达式一定不是纯json值
+            // 长度==1，且Token类型是 IDENTIFIER(非null) / this 的表达式一定不是纯json值
             case Some((expr, index)) => match (expr.toTokens()[0].kind) {
-                case THISTYPE | THIS =>
+                case THIS =>
                     this.pos = index
                     quote(($(expr)).toJsonValue())
                 case IDENTIFIER where this.peek.value != "null" =>
@@ -105,7 +108,7 @@ protected class JsonParser {
                 this.parseObject()
             case _ =>
                 diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
-                    'Failed to parse Json Value "${single.value}"', "Illegal value")
+                    'Expected json value, found "${single.value}"', 'Failed to parse "${single.value}"')
                 throw ASTException('Failed to parse "${single.value}"')
         }
     }
