@@ -3,10 +3,20 @@ package json4cj.parser
 import std.ast.*
 import std.collection.{ArrayList, reduce}
 
+protected enum JsonParserState {
+    | Init
+    | ExpectJsonValue
+    | ExpectKeyValuePair
+    | ExpectComma
+    | JsonArrayStart
+    | JsonArrayEnd
+    | JsonObjectStart
+    | JsonObjectEnd
+}
+
 protected class JsonParser {
     private let input: Tokens
     private var pos: Int64 = 0
-    private var loopCount = 0
 
     public init(input: Tokens) {
         this.input = input
@@ -22,6 +32,22 @@ protected class JsonParser {
         get() {
             this.pos++
             input[this.pos - 1]
+        }
+    }
+
+    public prop last: Token {
+        get() {
+            input[this.lastPos]
+        }
+    }
+
+    public prop lastPos: Int64 {
+        get() {
+            if (pos <= 0) {
+                0
+            } else {
+                this.pos - 1
+            }
         }
     }
 
@@ -71,88 +97,148 @@ protected class JsonParser {
             case FLOAT_LITERAL => quote(JsonFloat($single))
             case IDENTIFIER where single.value == "null" => quote(JsonNull())
             case BOOL_LITERAL => quote(JsonBool($single))
-            case LSQUARE => this.parseArray()
-            case LCURL => this.parseObject()
+            case LSQUARE =>
+                this.pos--
+                this.parseArray()
+            case LCURL =>
+                this.pos--
+                this.parseObject()
             case _ =>
-                diagReport(DiagReportLevel.ERROR, input[(this.pos - 1)..this.pos],
+                diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
                     'Failed to parse Json Value "${single.value}"', "Illegal value")
                 throw ASTException('Failed to parse "${single.value}"')
         }
     }
 
     public func parseArray(): Tokens {
-        this.skipWhiteSpace()
+        var state = JsonParserState.Init
+        var isParsing = true
         let list = ArrayList<Tokens>()
-        while (this.pos < this.input.size && this.peek.kind != RSQUARE) {
-            if (this.peek.kind == COMMA) {
-                this.pos++
-                this.skipWhiteSpace()
-                continue
+        while (this.pos < this.input.size && isParsing) {
+            match (state) {
+                case Init =>
+                    this.skipWhiteSpace()
+                    conformNext(LSQUARE)
+                    state = JsonArrayStart
+                case JsonArrayStart =>
+                    this.skipWhiteSpace()
+                    if (this.peek.kind == RSQUARE) {
+                        state = JsonArrayEnd
+                    } else {
+                        state = ExpectJsonValue
+                    }
+                case ExpectJsonValue =>
+                    this.skipWhiteSpace()
+                    list.append(this.parseValue())
+                    this.skipWhiteSpace()
+                    if (this.peek.kind == RSQUARE) {
+                        state = JsonArrayEnd
+                    } else {
+                        state = ExpectComma
+                    }
+                case ExpectComma =>
+                    this.skipWhiteSpace()
+                    this.parseComma()
+                    this.skipWhiteSpace()
+                    if (this.peek.kind == RSQUARE) {
+                        state = JsonArrayEnd
+                    } else {
+                        state = ExpectJsonValue
+                    }
+                case JsonArrayEnd => isParsing = false
+                case _ => throw Exception("Unexpected JsonParserState")
             }
-            list.append(this.parseValue())
-            this.skipWhiteSpace()
         }
-        let elems = match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
-            case Some(v) => Token(NL) + v + Token(NL)
-            case None => Tokens()
+        conformNext(RSQUARE)
+        match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
+            case Some(v) =>
+                let elems = Token(NL) + v + Token(NL)
+                quote(JsonArray([$elems]))
+            case None => quote(JsonArray())
         }
-        if (this.peek.kind != RSQUARE) {
-            diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)], 'Excepted "]", found ${this.peek.value}',
-                'Failed to parse "${this.peek.value}"')
-            throw ASTException('Failed to parse "${this.peek.value}"')
-        }
-        this.pos++
-        quote(JsonArray([$elems]))
     }
 
     public func parseObject(): Tokens {
-        this.skipWhiteSpace()
+        var state = JsonParserState.Init
+        var isParsing = true
         let list = ArrayList<Tokens>()
-        while (this.peek.kind != RCURL && this.pos < this.input.size) {
-            if (this.peek.kind == COMMA) {
-                this.pos++
-                this.skipWhiteSpace()
-                continue
+        while (this.pos < this.input.size && isParsing) {
+            match (state) {
+                case Init =>
+                    this.skipWhiteSpace()
+                    conformNext(LCURL)
+                    state = JsonObjectStart
+                case JsonObjectStart =>
+                    this.skipWhiteSpace()
+                    if (this.peek.kind == RCURL) {
+                        state = JsonObjectEnd
+                    } else {
+                        state = ExpectKeyValuePair
+                    }
+                case ExpectKeyValuePair =>
+                    this.skipWhiteSpace()
+                    let (key, value) = this.parseKeyValuePair()
+                    list.append(quote(($key,$value)))
+                    this.skipWhiteSpace()
+                    if (this.peek.kind == RCURL) {
+                        state = JsonObjectEnd
+                    } else {
+                        state = ExpectComma
+                    }
+                case ExpectComma =>
+                    this.skipWhiteSpace()
+                    this.parseComma()
+                    this.skipWhiteSpace()
+                    if (this.peek.kind == RCURL) {
+                        state = JsonObjectEnd
+                    } else {
+                        state = ExpectKeyValuePair
+                    }
+                case JsonObjectEnd => isParsing = false
+                case _ => throw Exception("Unexpected JsonParserState")
             }
-            // key: value
-            // key
-            let key = match (this.peekExprBeforeColon()) {
-                case Some((expr, index)) =>
-                    this.pos = index
-                    expr
-                case None where this.peek.kind == STRING_LITERAL => this.next.toTokens()
-                case None where this.peek.kind == IDENTIFIER && this.peek.value != "null" => this.next.toTokens()
-                case _ =>
-                    diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)],
-                        'Excepted String literal or String expression, found ${this.peek.value}',
-                        'Failed to parse "${this.peek.value}"')
-                    throw ASTException('Failed to parse "${this.peek.value}"')
-            }
-            this.skipWhiteSpace()
-            // :
-            if (this.peek.kind != COLON) {
+        }
+        conformNext(RCURL)
+        match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
+            case Some(v) =>
+                let pairs = Token(NL) + v + Token(NL)
+                quote(JsonObject(HashMap<String, JsonValue>([$pairs])))
+            case None => quote(JsonObject())
+        }
+    }
+
+    public func parseComma(): Unit {
+        if (this.next.kind != COMMA) {
+            diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
+                'Expected ",", found ${this.last.value}', 'Failed to parse "${this.last.value}"')
+            throw ASTException('Failed to parse "${this.last.value}"')
+        }
+    }
+
+    public func parseKeyValuePair(): (key: Tokens, value: Tokens) {
+        // key
+        let key = match (this.peekExprBeforeColon()) {
+            case Some((expr, index)) =>
+                this.pos = index
+                expr
+            case None where this.peek.kind == STRING_LITERAL => this.next.toTokens()
+            case None where this.peek.kind == IDENTIFIER && this.peek.value != "null" => this.next.toTokens()
+            case _ =>
                 diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)],
-                    'Excepted ":", found ${this.peek.value}', 'Failed to parse "${this.peek.value}"')
+                    'Excepted String literal or String expression, found ${this.peek.value}',
+                    'Failed to parse "${this.peek.value}"')
                 throw ASTException('Failed to parse "${this.peek.value}"')
-            }
-            this.pos++
-            this.skipWhiteSpace()
-            // value
-            let value = parseValue()
-            list.append(quote(($key,$value)))
-            this.skipWhiteSpace()
         }
-        let pairs = match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
-            case Some(v) => Token(NL) + v + Token(NL)
-            case None => Tokens()
+        this.skipWhiteSpace()
+        // :
+        if (this.next.kind != COLON) {
+            diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
+                'Excepted ":", found ${this.last.value}', 'Failed to parse "${this.last.value}"')
+            throw ASTException('Failed to parse "${this.last.value}"')
         }
-        if (this.peek.kind != RCURL) {
-            diagReport(DiagReportLevel.ERROR, input[this.pos..(this.pos + 1)], 'Excepted "}", found ${this.peek.value}',
-                'Failed to parse "${this.peek.value}"')
-            throw ASTException('Failed to parse "${this.peek.value}"')
-        }
-        this.pos++
-        quote(JsonObject(HashMap<String, JsonValue>([$pairs])))
+        this.skipWhiteSpace()
+        // value
+        (key, parseValue())
     }
 
     // 注意：parseExprFragment会顺便解析结尾的换行符，要去掉
@@ -186,6 +272,15 @@ protected class JsonParser {
             (parseExpr(this.input[this.pos..p]).toTokens(), p)
         } catch (e: ParseASTException) {
             None
+        }
+    }
+
+    public func conformNext(kind: TokenKind): Unit {
+        if (this.next.kind != kind) {
+            diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
+                'Excepted "${Token(kind).toTokens()}", found ${this.last.value}', 'Failed to parse "${this.last.value}"'
+            )
+            throw ASTException('Failed to parse "${this.last.value}"')
         }
     }
 }
