@@ -78,11 +78,14 @@ public class JsonTests {
     @TestCase
     func jsonArrayTest() {
         let o = JsonObject.fromStr(#"{
-            "array": [1, "string", true, null, {"key": "value"}]
+            "array": [1, "string", true, null, {"key": "value"}],
+            "array1": [1, 2, "string"]
         }"#)
+        let str = "string"
         let j = @Json(
             {
-            "array": [1, "string", true, null, {"key": "value"}]
+            "array": [1, "string", true, null, {"key": "value"}],
+            "array1": [1, 2, str],
             }
         )
         @Expect(o.toJsonString(), j.toJsonString())
