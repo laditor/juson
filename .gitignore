@@ -2,4 +2,3 @@
 .cache
 .vscode
 cjpm.lock
-cjlintignore.cfg
