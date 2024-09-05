@@ -1,6 +1,5 @@
 protected package json4cj.test
 
-import encoding.json.*
 import std.collection.{HashMap, ArrayList}
 import json4cj.*
 

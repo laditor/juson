@@ -1,6 +1,5 @@
 protected package json4cj.test
 
-import encoding.json.*
 import json4cj.*
 
 @Test
