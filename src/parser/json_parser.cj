@@ -48,15 +48,15 @@ protected class JsonParser {
             // 长度>=2的表达式一定不是纯json值
             case Some((expr, index)) where index - this.pos != 1 =>
                 this.pos = index
-                quote(_castJsonValue($(expr)))
+                quote(($(expr)).toJsonValue())
             // 长度==1，且Token类型是IDENTIFIER(非null)的表达式一定不是纯json值
             case Some((expr, index)) => match (expr.toTokens()[0].kind) {
                 case THISTYPE | THIS =>
                     this.pos = index
-                    quote(_castJsonValue($(expr)))
+                    quote(($(expr)).toJsonValue())
                 case IDENTIFIER where this.peek.value != "null" =>
                     this.pos = index
-                    quote(_castJsonValue($(expr)))
+                    quote(($(expr)).toJsonValue())
                 case _ => this.parseJsonValue()
             }
             case _ => this.parseJsonValue()

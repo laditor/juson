@@ -4,7 +4,7 @@ import encoding.json.*
 import json4cj.*
 
 @Test
-public class JsonTest {
+public class JsonTests {
     // Test String values
     @TestCase
     func jsonStringTest() {
