@@ -1,4 +1,6 @@
 /target
+/output
 .cache
 .vscode
 cjpm.lock
+*.gcno
