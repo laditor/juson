@@ -1,7 +1,7 @@
 package json4cj.ext
 
 import encoding.json.*
-import std.collection.{ArrayList, HashMap, reduce}
+import std.collection.{ArrayList, HashMap, TreeMap, reduce}
 
 sealed interface ToJsonValue  {
     func toJsonValue(): JsonValue
@@ -32,6 +32,13 @@ extend<T> Array<T> <: ToJsonValue where T <: ToJsonValue {
 extend<T> ArrayList<T> <: ToJsonValue where T <: ToJsonValue {
     public func toJsonValue(): JsonArray {
         JsonArray(Array(this.size, {i => this[i].toJsonValue()}))
+    }
+}
+
+extend<T> TreeMap<String, T> <: ToJsonValue where T <: ToJsonValue {
+    public func toJsonValue(): JsonObject {
+        let arr = this.toArray()
+        JsonObject(HashMap(Array(this.size, {i => (arr[i][0], arr[i][1].toJsonValue())})))
     }
 }
 
