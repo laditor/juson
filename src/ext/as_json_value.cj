@@ -3,7 +3,7 @@ package json4cj.ext
 import encoding.json.*
 import std.collection.{ArrayList, HashMap, TreeMap, reduce}
 
-sealed interface ToJsonValue  {
+public interface ToJsonValue  {
     func toJsonValue(): JsonValue
 }
 
