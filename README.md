@@ -106,6 +106,7 @@ json4cj = { git = "https://gitcode.com/Dacec/json4cj", branch = "main", output-t
 
 ### 案例
 ```cj
+import std.collection.{map, collectArray}
 import json4cj.*
 
 main(): Int64 {
