@@ -1,7 +1,7 @@
-protected package json4cj.test
+protected package juson.test
 
 import std.collection.{HashMap, ArrayList, forEach}
-import json4cj.*
+import juson.*
 
 @Test
 protected class ToJsonValueTests {

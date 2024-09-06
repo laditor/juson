@@ -1,4 +1,4 @@
-package json4cj.ext
+package juson.ext
 
 import encoding.json.*
 import std.collection.{ArrayList, HashMap, TreeMap, reduce}

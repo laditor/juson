@@ -1,10 +1,10 @@
-macro package json4cj
+macro package juson
 
 import std.ast.*
-import json4cj.parser.parseWhole
+import juson.parser.parseWhole
 public import encoding.json.*
 public import std.collection.HashMap
-public import json4cj.ext.ToJsonValue
+public import juson.ext.ToJsonValue
 
 public macro Json(input: Tokens): Tokens {
     parseWhole(input)

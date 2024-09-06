@@ -1,4 +1,4 @@
-package json4cj.parser
+package juson.parser
 
 import std.ast.*
 import std.collection.{ArrayList, reduce}

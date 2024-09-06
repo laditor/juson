@@ -1,4 +1,4 @@
-# json4cj
+# juson
 
 用Json宏生成JsonValue
 - 在Json中使用**变量**和**表达式**
@@ -77,14 +77,14 @@ let j = @Json(
 
 ### import
 ```cj
-import json4cj.*
+import juson.*
 ```
 上面的`import`相当于导入如下内容
 ```cj
 import std.collection.HashMap
 import encoding.json.*
-import json4cj.*
-import json4cj.ext.ToJsonValue
+import juson.*
+import juson.ext.ToJsonValue
 ```
 
 ### Extends
@@ -154,19 +154,19 @@ public func toJsonValue(): JsonValue
 ### 导入项目
 将下面内容放在`cjpm.toml`的`[dependencies]`下<br>选**一种**你喜欢的就行
 ```
-[dependencies.json4cj]
-  git = "https://gitcode.com/Dacec/json4cj"
+[dependencies.juson]
+  git = "https://gitcode.com/Dacec/juson"
   branch = "main"
   output-type = "static"
 ```
 ```
-json4cj = { git = "https://gitcode.com/Dacec/json4cj", branch = "main", output-type = "static"}
+juson = { git = "https://gitcode.com/Dacec/juson", branch = "main", output-type = "static"}
 ```
 
 ### 案例
 ```cj
 import std.collection.{map, collectArray}
-import json4cj.*
+import juson.*
 
 main(): Int64 {
     let key1 = "key"

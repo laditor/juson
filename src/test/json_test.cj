@@ -1,6 +1,6 @@
-protected package json4cj.test
+protected package juson.test
 
-import json4cj.*
+import juson.*
 
 @Test
 public class JsonTests {

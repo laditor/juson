@@ -5,7 +5,7 @@
   compile-option = ""
   description = "nothing here"
   link-option = ""
-  name = "json4cj"
+  name = "juson"
   output-type = "static"
   src-dir = ""
   target-dir = ""
