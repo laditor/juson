@@ -150,7 +150,9 @@ public class JsonTests {
             dynamicKey + "1": dynamicValue + "1",
             dynamicKey*2: dynamicValue*2,
             ofStr1(dynamicKey): ofStr1(dynamicValue),
-            dynamicKey |> ofStr2: dynamicValue |> ofStr2
+            dynamicKey |> 
+                ofStr2: dynamicValue |> 
+                    ofStr2
             }
         )
         @Expect(o.toJsonString(), j.toJsonString())
