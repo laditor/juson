@@ -5,6 +5,28 @@ import json4cj.*
 @Test
 public class JsonTests {
     // Test String values
+    @TestCase[
+        v1 in random(),
+        v2 in random(),
+        v3 in [true, false],
+    ]
+    func jsonValueTest(v1: Int64, v2: String, v3: Bool) {
+        let o1 = JsonInt(v1)
+        let j1 = @Json(v1)
+        @Expect(o1.toJsonString(), j1.toJsonString())
+
+        let o2 = JsonString(v2)
+        let j2 = @Json(v2)
+        @Expect(o2.toJsonString(), j2.toJsonString())
+
+        let o3 = JsonBool(v3)
+        let j3 = @Json(v3)
+        @Expect(o3.toJsonString(), j3.toJsonString())
+
+        let o4 = JsonNull()
+        let j4 = @Json(null)
+        @Expect(j4.toJsonString(), o4.toJsonString())
+    }
     @TestCase
     func jsonStringTest() {
         let o = JsonObject.fromStr(
@@ -77,10 +99,12 @@ public class JsonTests {
     // Test Arrays
     @TestCase
     func jsonArrayTest() {
-        let o = JsonObject.fromStr(#"{
+        let o = JsonObject.fromStr(
+            #"{
             "array": [1, "string", true, null, {"key": "value"}],
             "array1": [1, 2, "string"]
-        }"#)
+        }"#
+        )
         let str = "string"
         let j = @Json(
             {
@@ -133,13 +157,15 @@ public class JsonTests {
     // Test Dynamic Keys and Values
     @TestCase
     func jsonDynamicKeyTest() {
-        let o = JsonObject.fromStr(#"{
+        let o = JsonObject.fromStr(
+            #"{
             "dynamicKey": "dynamicValue",
             "dynamicKey1": "dynamicValue1",
             "dynamicKeydynamicKey": "dynamicValuedynamicValue",
             "[dynamicKey]": "[dynamicValue]",
             "dynamicKey-ofStr2": "dynamicValue-ofStr2"
-        }"#)
+        }"#
+        )
         let dynamicKey = "dynamicKey"
         let dynamicValue = "dynamicValue"
         let ofStr1 = {s: String => "[${s}]"}
@@ -161,7 +187,8 @@ public class JsonTests {
     // Test Trailing Commas
     @TestCase
     func jsonTrailingCommaTest() {
-        let o = JsonObject.fromStr(#"{
+        let o = JsonObject.fromStr(
+            #"{
             "key1": {
                 "key12": "value12",
                 "key12": "value12"
@@ -170,7 +197,8 @@ public class JsonTests {
                 "value21",
                 "value22"
             ]
-            }"#)
+            }"#
+        )
         let j = @Json(
             {
             "key1": {

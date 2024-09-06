@@ -1,23 +1,23 @@
 protected package json4cj.test
 
-import std.collection.{HashMap, ArrayList}
+import std.collection.{HashMap, ArrayList, forEach}
 import json4cj.*
 
 @Test
 protected class ToJsonValueTests {
-    @TestCase
-    func castInt64Test() {
-        let input = 42
-        let expectedOutput = JsonInt(42)
+    @TestCase[v in random()]
+    func castInt64Test(v: Int64) {
+        let input = v
+        let expectedOutput = JsonInt(v)
 
         let result = input.toJsonValue()
 
         @Expect(result.toJsonString(), expectedOutput.toJsonString())
     }
-    @TestCase
-    func castBoolTest() {
-        let inputTrue = true
-        let expectedOutputTrue = JsonBool(true)
+    @TestCase[v in random()]
+    func castBoolTest(v: Bool) {
+        let inputTrue = v
+        let expectedOutputTrue = JsonBool(v)
 
         let resultTrue = inputTrue.toJsonValue()
 
@@ -31,72 +31,66 @@ protected class ToJsonValueTests {
         @Expect(resultFalse.toJsonString(), expectedOutputFalse.toJsonString())
     }
 
-    @TestCase
-    func castFloat64Test() {
-        let input = 3.14
-        let expectedOutput = JsonFloat(3.14)
+    @TestCase[v in random()]
+    func castFloat64Test(v: Float64) {
+        let input = v
+        let expectedOutput = JsonFloat(v)
 
         let result = input.toJsonValue()
 
         @Expect(result.toJsonString(), expectedOutput.toJsonString())
     }
-    @TestCase
-    func castStringTest() {
-        let input = "Hello, World!"
-        let expectedOutput = JsonString("Hello, World!")
+    @TestCase[v in random()]
+    func castStringTest(v: String) {
+        let input = v
+        let expectedOutput = JsonString(v)
 
         let result = input.toJsonValue()
 
         @Expect(result.toJsonString(), expectedOutput.toJsonString())
     }
-    @TestCase
-    func castArrayTest() {
-        let input = [1, 2 , 3]
-        let expectedOutput = JsonArray([JsonInt(1), JsonInt(2), JsonInt(3)])
+    @TestCase[v in random()]
+    func castArrayTest(v: Array<Int64>) {
+        let input = v
+        let expectedOutput = JsonArray()
+        v |> forEach{i => expectedOutput.add(JsonInt(i))}
 
         let result = input.toJsonValue()
 
         @Expect(result.toJsonString(), expectedOutput.toJsonString())
     }
-    @TestCase
-    func castArrayListTest() {
-        let inputList = ArrayList<Float64>([0.2, 0.5])
-
-        let expectedOutput = JsonArray([JsonFloat(0.2), JsonFloat(0.5)])
+    @TestCase[v in random()]
+    func castArrayListTest(v: ArrayList<Float64>) {
+        let inputList = v
+        let expectedOutput = JsonArray()
+        v |> forEach{i => expectedOutput.add(JsonFloat(i))}
 
         let result = inputList.toJsonValue()
 
         @Expect(result.toJsonString(), expectedOutput.toJsonString())
     }
-    @TestCase
-    func castHashMapTest() {
-        let inputMap = HashMap<String, Int64>()
-        inputMap["key1"] = 123
-        inputMap["key2"] = 234
-        let input = inputMap
+    @TestCase[v in random()]
+    func castHashMapTest(v: HashMap<String, Int64>) {
+        let input = v
 
-        let expectedOutput = JsonObject(HashMap<String, JsonValue>([("key1", JsonInt(123)), ("key2", JsonInt(234))]))
+        let expectedOutput = JsonObject()
+        v |> forEach {i => expectedOutput.put(i[0], JsonInt(i[1]))}
 
         let result = input.toJsonValue()
 
         @Expect(result.toJsonString(), expectedOutput.toJsonString())
     }
-    @TestCase
-    func castOptionTest() {
+    @TestCase[v in random()]
+    func castOptionTest(v: Option<Int64>) {
         // Test Some
-        let inputSome = Some(99)
-        let expectedOutputSome = JsonInt(99)
+        let input = v
+        let expectedOutputSome = match (v) {
+            case Some(s) => JsonInt(s)
+            case None => JsonNull()
+        }
 
-        let resultSome = inputSome.toJsonValue()
+        let resultSome = input.toJsonValue()
 
         @Expect(resultSome.toJsonString(), expectedOutputSome.toJsonString())
-
-        // Test None
-        let inputNone = None<Int64>
-        let expectedOutputNone = JsonNull()
-
-        let resultNone = inputNone.toJsonValue()
-
-        @Expect(resultNone.toJsonString(), expectedOutputNone.toJsonString())
     }
 }
