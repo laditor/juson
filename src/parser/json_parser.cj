@@ -51,17 +51,21 @@ protected class JsonParser {
         }
     }
 
-    public func skipWhiteSpace(): Unit {
-        while (this.pos < this.input.size && this.peek.kind == NL) {
-            this.pos++
+    public func skipWhiteSpace(input: Tokens, pos: Int64): Int64 {
+        var res = pos
+        while (res < this.input.size && input[res].kind == NL) {
+            res++
         }
+        res
     }
 
-    public func parseWhole(): Tokens {
-        let result = this.parseValue()
-        this.skipWhiteSpace()
-        if (this.pos != this.input.size) {
-            diagReport(DiagReportLevel.ERROR, input[this.pos..], 'Excepted no more data here',
+    public func parseWhole(input: Tokens): Tokens{
+        let result: Tokens
+        var currPos = 0
+        currPos = skipWhiteSpace(input, currPos)
+        (result, currPos) = parseValue(input, 0)
+        if (currPos != input.size) {
+            diagReport(DiagReportLevel.ERROR, input[currPos..], 'Excepted no more data here',
                 'Unexpected trailing data after JSON value')
             throw ASTException('Unexpected trailing data after JSON value')
         }
@@ -69,80 +73,76 @@ protected class JsonParser {
     }
 
     // 可以直接解析为Json值的Token用parseJsonValue处理，其他的表达式/变量调用toJsonValue()
-    public func parseValue(): Tokens {
-        this.skipWhiteSpace()
-        match (this.peekExprFragment()) {
+    public func parseValue(input: Tokens, pos: Int64): (Tokens, Int64) {
+        var currPos = pos
+        match (peekExprFragment(input, currPos)) {
             // 特殊规则：遇到 [ 统一视为jsonArray，因为语法与Array字面量冲突。在宏中请用Array<T>()
-            case Some((expr, index)) where this.peek.kind == LSQUARE => this.parseJsonValue()
+            case Some((expr, index)) where input[currPos].kind == LSQUARE => parseJsonValue(input, currPos)
             // 长度>=2的表达式一定不是纯json值
-            case Some((expr, index)) where index - this.pos != 1 =>
-                this.pos = index
-                quote(($(expr)).toJsonValue())
+            case Some((expr, index)) where index - currPos != 1 =>
+                currPos = index
+                (quote(($(expr)).toJsonValue()), currPos)
             // 长度==1，且Token类型是 IDENTIFIER(非null) / this 的表达式一定不是纯json值
             case Some((expr, index)) => match (expr.toTokens()[0].kind) {
                 case THIS =>
-                    this.pos = index
-                    quote(($(expr)).toJsonValue())
-                case IDENTIFIER where this.peek.value != "null" =>
-                    this.pos = index
-                    quote(($(expr)).toJsonValue())
-                case _ => this.parseJsonValue()
+                    currPos = index
+                    (quote(($(expr)).toJsonValue()), currPos)
+                case IDENTIFIER where input[currPos].value != "null" =>
+                    currPos = index
+                    (quote(($(expr)).toJsonValue()), currPos)
+                case _ => parseJsonValue(input, currPos)
             }
-            case _ => this.parseJsonValue()
+            case _ => parseJsonValue(input, currPos)
         }
     }
 
-    public func parseJsonValue(): Tokens {
-        let single = this.next
-        match (single.kind) {
-            case STRING_LITERAL => quote(JsonString($single))
-            case INTEGER_LITERAL => quote(JsonInt($single))
-            case FLOAT_LITERAL => quote(JsonFloat($single))
-            case IDENTIFIER where single.value == "null" => quote(JsonNull())
-            case BOOL_LITERAL => quote(JsonBool($single))
+    public func parseJsonValue(input: Tokens, pos: Int64): (Tokens, Int64) {
+        var currPos = pos
+        currPos = skipWhiteSpace(input, currPos + 1)
+        match (input[pos].kind) {
+            case STRING_LITERAL => (quote(JsonString($(input[pos]))), currPos)
+            case INTEGER_LITERAL => (quote(JsonInt($(input[pos]))), currPos)
+            case FLOAT_LITERAL => (quote(JsonFloat($(input[pos]))), currPos)
+            case IDENTIFIER where input[pos].value == "null" => (quote(JsonNull()), currPos)
+            case BOOL_LITERAL => (quote(JsonBool($(input[pos]))), currPos)
             case LSQUARE =>
-                this.pos--
-                this.parseArray()
+                parseArray(input, pos)
             case LCURL =>
-                this.pos--
-                this.parseObject()
+                this.parseObject(input, pos)
             case _ =>
-                diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
-                    'Expected json value, found "${single.value}"', 'Failed to parse "${single.value}"')
-                throw ASTException('Failed to parse "${single.value}"')
+                diagReport(DiagReportLevel.ERROR, input[pos..(pos + 1)],
+                    'Expected json value, found "${input[pos].value}"', 'Failed to parse "${input[pos].value}"')
+                throw ASTException('Failed to parse "${input[pos].value}"')
         }
     }
 
-    public func parseArray(): Tokens {
+    public func parseArray(input: Tokens, pos: Int64): (Tokens, Int64) {
+        var currPos = pos
         var state = JsonParserState.Init
         var isParsing = true
         let list = ArrayList<Tokens>()
-        while (this.pos < this.input.size && isParsing) {
+        while (currPos < input.size && isParsing) {
             match (state) {
                 case Init =>
-                    this.skipWhiteSpace()
-                    conformNext(LSQUARE)
+                    currPos = conformNext(input, currPos, LSQUARE)
                     state = JsonArrayStart
                 case JsonArrayStart =>
-                    this.skipWhiteSpace()
-                    if (this.peek.kind == RSQUARE) {
+                    if (input[currPos].kind == RSQUARE) {
                         state = JsonArrayEnd
                     } else {
                         state = ExpectJsonValue
                     }
                 case ExpectJsonValue =>
-                    this.skipWhiteSpace()
-                    list.append(this.parseValue())
-                    this.skipWhiteSpace()
-                    if (this.peek.kind == RSQUARE) {
+                    let tks: Tokens
+                    (tks, currPos) = parseValue(input, currPos)
+                    list.append(tks)
+                    if (input[currPos].kind == RSQUARE) {
                         state = JsonArrayEnd
                     } else {
                         state = ExpectComma
                     }
                 case ExpectComma =>
-                    this.skipWhiteSpace()
-                    this.parseComma()
-                    this.skipWhiteSpace()
+                   currPos = skipComma(input, currPos)
                     if (this.peek.kind == RSQUARE) {
                         state = JsonArrayEnd
                     } else {
@@ -152,7 +152,7 @@ protected class JsonParser {
                 case _ => throw Exception("Unexpected JsonParserState")
             }
         }
-        conformNext(RSQUARE)
+        currPos = conformNext(input, currPos, RSQUARE)
         match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
             case Some(v) =>
                 let elems = Token(NL) + v + Token(NL)
@@ -161,7 +161,7 @@ protected class JsonParser {
         }
     }
 
-    public func parseObject(): Tokens {
+    public func parseObject(input: Tokens, pos: Int64): (Tokens, Int64) {
         var state = JsonParserState.Init
         var isParsing = true
         let list = ArrayList<Tokens>()
@@ -190,7 +190,7 @@ protected class JsonParser {
                     }
                 case ExpectComma =>
                     this.skipWhiteSpace()
-                    this.parseComma()
+                    this.skipComma()
                     this.skipWhiteSpace()
                     if (this.peek.kind == RCURL) {
                         state = JsonObjectEnd
@@ -210,15 +210,16 @@ protected class JsonParser {
         }
     }
 
-    public func parseComma(): Unit {
-        if (this.next.kind != COMMA) {
-            diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
-                'Expected ",", found ${this.last.value}', 'Failed to parse "${this.last.value}"')
-            throw ASTException('Failed to parse "${this.last.value}"')
+    public func skipComma(input: Tokens, pos: Int64): Int64 {
+        if (input[pos].kind != COMMA) {
+            diagReport(DiagReportLevel.ERROR, input[pos..(pos + 1)],
+                'Expected ",", found ${input[pos].value}', 'Failed to parse "${input[pos].value}"')
+            throw ASTException('Failed to parse "${input[pos].value}"')
         }
+        skipWhiteSpace(input, pos + 1)
     }
 
-    public func parseKeyValuePair(): (key: Tokens, value: Tokens) {
+    public func parseKeyValuePair(input: Tokens, pos: Int64): ((key: Tokens, value: Tokens), Int64) {
         // key
         let key = match (this.peekExprBeforeColon()) {
             case Some((expr, index)) =>
@@ -245,7 +246,7 @@ protected class JsonParser {
     }
 
     // 注意：parseExprFragment会顺便解析结尾的换行符，要去掉
-    public func peekExprFragment(): Option<(Tokens, Int64)> {
+    public func peekExprFragment(input: Tokens, pos: Int64): Option<(Tokens, Int64)> {
         try {
             var index: Int64 = 0
             (_, index) = parseExprFragment(this.input, startFrom: this.pos)
@@ -266,7 +267,7 @@ protected class JsonParser {
 
     // 也要去掉换行符
     // 专用来解析object中key的表达式，因为正常的parseExprFragment遇到 : 会报错。。。。
-    public func peekExprBeforeColon(): Option<(Tokens, Int64)> {
+    public func peekExprBeforeColon(input: Tokens, pos: Int64): Option<(Tokens, Int64)> {
         var p = this.pos
         while (p < this.input.size && this.input[p].kind != COLON) {
             p++
@@ -278,12 +279,13 @@ protected class JsonParser {
         }
     }
 
-    public func conformNext(kind: TokenKind): Unit {
-        if (this.next.kind != kind) {
-            diagReport(DiagReportLevel.ERROR, input[this.lastPos..(this.lastPos + 1)],
-                'Excepted "${Token(kind).toTokens()}", found ${this.last.value}', 'Failed to parse "${this.last.value}"'
+    public func conformNext(input: Tokens, pos: Int64, kind: TokenKind): Int64 {
+        if (input[pos].kind != kind) {
+            diagReport(DiagReportLevel.ERROR, input[pos..(pos + 1)],
+                'Excepted "${Token(kind).toTokens()}", found ${input[pos].value}', 'Failed to parse "${input[pos].value}"'
             )
-            throw ASTException('Failed to parse "${this.last.value}"')
+            throw ASTException('Failed to parse "${input[pos].value}"')
         }
+        skipWhiteSpace(input, pos + 1)
     }
 }
