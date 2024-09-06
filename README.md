@@ -5,16 +5,75 @@
 - 尾随逗号支持
 
 ### @Json
-在宏中直接写Json，并且可以使用变量和表达式
+##### @Json中使用变量
+变量的类型需要继承`ToJsonValue`接口
 ```
 let str = "string"
 let j = @Json(
     {
-    "array": [1, "string", true, null, {"key": "value"}],
-    "array1": [1, 2, str],
+        "array": [1, "string", true, null, {"key": "value"}],
+        "array1": [1, 2, str], // [1, 2, "string"]
     }
 )
 ```
+
+##### @Json中使用表达式
+表达式的类型需要继承`ToJsonValue`接口
+```
+let ofStr = {i: String => "[${i}]"}
+let name = "Elis"
+let j = @Json(
+    {
+        "key1": 4 * 3, // 12
+        "key2" |> ofStr: ofStr("value2"), // "[key2]": "[value2]"
+        "key3" * 2: "value3" + "_plus", // "key3key3": "value3_plus"
+    }
+)
+```
+
+##### @Json中使用数组(`Array`/`ArryaList`)动态生成Json数组
+数组元素需要继承`ToJsonValue`接口
+```
+let arr1 = [1, 2, 3, 4, 5]
+let arr2 = ArrayList(["a", "b", "c"])
+let j = @Json(
+    {
+        "key1": arr1, // [1, 2, 3, 4, 5]
+        "key2": arr2  // ["a", "b", "c"]
+    }
+)
+```
+
+##### @Json中`HashMap`/`TreeMap`动态生成Json对象
+key类型必须是`String`，value需要继承`ToJsonValue`
+```
+let map1 = HashMap<String, ToJsonValue([("name", "aaa"), ("age", 23)])
+let map2 = TreeMap<String, Int64>([("k1": 17), ("k2", 19)])
+let j = @Json(
+    {
+        "key1": map1, // {"name": "aaa", "age": 23}
+        "key2": map2  // {"k1": 17, "k2": 19}
+    }
+)
+```
+
+##### @Json中使用Option(Some/None)
+`Option<T>`,T需要继承`ToJsonValue`
+```
+let a = (1i64 as Int64)
+let b = (1i64 as Int8)
+let j = @Json(
+    {
+        "key1": a, // 1
+        "key2": b  // null
+    }
+)
+```
+
+### 注意
+- 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
+- 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
+- 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承`ToJsonValue`接口
 
 ### import
 ```cj
