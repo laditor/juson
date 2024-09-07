@@ -1,8 +1,9 @@
-# juson
+# Juson
 
-用Json宏生成JsonValue
-- 在Json中使用**变量**和**表达式**
-- 尾随逗号支持
+使用 Juson 轻松生成 JSON，并支持嵌入 **变量**、**表达式** 和 **动态结构**。Juson 让编写 JSON 像使用本地语言语法一样自然，允许您将数组、集合甚至自定义类型无缝集成到 JSON 对象中，同时不妨碍**编译时检查**和**类型安全**。
+主要特点包括：
+- 内联变量和表达式： 直接在 JSON 结构中注入值、变量或表达式。
+- 尾随逗号支持： 使用可选的尾随逗号，使 JSON 更加整洁，减少手动格式化的需要。
 
 ### @Json
 ##### @Json中使用变量
@@ -99,7 +100,7 @@ let j = @Json(
             "city": "city1",
             "zipcode": 10001
         },
-        "skills": ["Cangjie", "Rust", "Go"]
+        "skills": ["Cangjie", "Rust", "Go"],
     }
 )
 ```
@@ -122,7 +123,7 @@ import juson.*
 - 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
 - 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
 - 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
-- 虽然可以编译运行，但是建议不要在@Json中嵌套@Json，会影响编译期宏展开速度
+- 虽然可以编译运行，但是建议**不要**在@Json中嵌套@Json，会影响编译期宏展开速度
 
 ### 导入项目
 将下面内容放在`cjpm.toml`的`[dependencies]`下<br>选**一种**你喜欢的就行
