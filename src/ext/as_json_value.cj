@@ -59,5 +59,33 @@ extend<T> Option<T> <: ToJsonValue where T <: ToJsonValue {
 }
 
 extend JsonValue <: ToJsonValue {
-    public func toJsonValue(): JsonValue {this}
+    public func toJsonValue(): JsonValue { this }
+}
+
+extend JsonBool {
+    public func ToJsonValue(): JsonBool { this }
+}
+
+extend JsonFloat {
+    public func ToJsonValue(): JsonFloat { this }
+}
+
+extend JsonInt {
+    public func ToJsonValue(): JsonInt { this }
+}
+
+extend JsonString {
+    public func ToJsonValue(): JsonString { this }
+}
+
+extend JsonNull {
+    public func ToJsonValue(): JsonNull { this }
+}
+
+extend JsonArray {
+    public func ToJsonValue(): JsonArray { this }
+}
+
+extend JsonObject {
+    public func ToJsonValue(): JsonObject { this }
 }
