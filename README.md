@@ -74,13 +74,13 @@ let j = @Json(
 这其实也是@Json中使用表达式的一部分，`JsonValue`也继承了`ToJsonValue`
 ```
 let a = @Json(4 * 8 + 2)
-let b = @JsonString("jsonString")
+let b = @Json("jsonString")
 let j = @Json(
     {
         "key1": a, // 34
         "key2": b,  // "jsonString"
         "key3": @Json({
-            
+            "innerKey": "innerValue"
         })
     }
 )
@@ -122,6 +122,7 @@ import juson.ext.ToJsonValue
 - 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
 - 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
 - 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承`ToJsonValue`接口
+- 虽然可以编译运行，但是建议不要在@Json中嵌套@Json，会影响编译期宏展开速度
 
 ### 导入项目
 将下面内容放在`cjpm.toml`的`[dependencies]`下<br>选**一种**你喜欢的就行
