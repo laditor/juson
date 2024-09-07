@@ -70,11 +70,39 @@ let j = @Json(
 )
 ```
 
-### 注意
-- 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
-- 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
-- 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承`ToJsonValue`接口
+##### @Json中嵌套使用JsonValue
+这其实也是@Json中使用表达式的一部分，`JsonValue`也继承了`ToJsonValue`
+```
+let a = @Json(4 * 8 + 2)
+let b = @JsonString("jsonString")
+let j = @Json(
+    {
+        "key1": a, // 34
+        "key2": b,  // "jsonString"
+        "key3": @Json({
+            
+        })
+    }
+)
+```
 
+##### @Json编写一般json
+很多时候不需要上面的特性，一般的json就够用了
+```
+let j = @Json(
+    {
+        "name": "Jnnn",
+        "age": 24,
+        "isEmployed": true,
+        "children": null,
+        "address": {
+            "city": "city1",
+            "zipcode": 10001
+        },
+        "skills": ["Cangjie", "Rust", "Go"]
+    }
+)
+```
 ### import
 ```cj
 import juson.*
@@ -87,69 +115,13 @@ import juson.*
 import juson.ext.ToJsonValue
 ```
 
-### Extends
-##### public interface ToJsonValue
-```
-func toJsonValue(): JsonValue
-```
-提供转换成`JsonValue`的能力
+### API
+[API文档](./docs/api.md)
 
-##### extend Bool <: ToJsonValue
-```
-public func toJsonValue(): JsonBool
-```
-`bool`转成`JsonBool`
-
-##### extend Float64 <: ToJsonValue
-```
-public func toJsonValue(): JsonFloat
-```
-`Float64`转成`JsonFloat`
-
-##### extend Int64 <: ToJsonValue
-```
-public func toJsonValue(): JsonInt
-```
-`Int64`转成`JsonInt`
-
-##### extend String <: ToJsonValue
-```
-public func toJsonValue(): JsonString
-```
-`String`转成`JsonString`
-
-##### extend\<T> Array\<T> <: ToJsonValue where T <: ToJsonValue
-```
-public func toJsonValue(): JsonArray 
-```
-`Array<T>`转成`JsonArray`，数组元素转成对应的`JsonValue`
-
-
-##### extend<T> ArrayList<T> <: ToJsonValue where T <: ToJsonValue
-```
-public func toJsonValue(): JsonArray
-```
-`ArrayList<T>`转成`JsonArray`，数组元素转成对应的`JsonValue`
-
-##### extend<T> TreeMap<String, T> <: ToJsonValue where T <: ToJsonValue
-```
-public func toJsonValue(): JsonObject
-```
-`TreeMap<String, T>`转成`JsonObject`，`TreeMap`中的键值对，对应`JsonObject`中的键值对
-
-##### extend<T> HashMap<String, T> <: ToJsonValue where T <: ToJsonValue
-```
-public func toJsonValue(): JsonObject
-```
-`HashMap<String, T>`转成`JsonObject`，`HashMap`中的键值对，对应`JsonObject`中的键值对
-
-##### extend<T> Option<T> <: ToJsonValue where T <: ToJsonValue
-```
-public func toJsonValue(): JsonValue
-```
-`Option<T>`转成`JsonValue`，两种情况：
-- `Option.Some`，将内部值转成对应的`JsonValue`
-- `Option.None`，返回`JsonNull`
+### 注意
+- 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
+- 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
+- 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承`ToJsonValue`接口
 
 ### 导入项目
 将下面内容放在`cjpm.toml`的`[dependencies]`下<br>选**一种**你喜欢的就行
@@ -194,3 +166,5 @@ main(): Int64 {
     return 0
 }
 ```
+
+### 参考
