@@ -25,7 +25,7 @@ let name = "Elis"
 let j = @Json(
     {
         "key1": 4 * 3, // 12
-        "key2" |> ofStr: ofStr("value2"), // "[key2]": "[value2]"
+        "key2" |> ofStr: ofStr(name), // "[key2]": "[value2]"
         "key3" * 2: "value3" + "_plus", // "key3key3": "value3_plus"
     }
 )
@@ -47,8 +47,8 @@ let j = @Json(
 ##### @Json中`HashMap`/`TreeMap`动态生成Json对象
 key类型必须是`String`，value需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
 ```
-let map1 = HashMap<String, ToJsonValue([("name", "aaa"), ("age", 23)])
-let map2 = TreeMap<String, Int64>([("k1": 17), ("k2", 19)])
+let map1 = HashMap<String, ToJsonValue>([("name", "aaa"), ("age", 23)])
+let map2 = TreeMap<String, Int64>([("k1", 17), ("k2", 19)])
 let j = @Json(
     {
         "key1": map1, // {"name": "aaa", "age": 23}
@@ -61,7 +61,7 @@ let j = @Json(
 `Option<T>`,T需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
 ```
 let a = (1i64 as Int64)
-let b = (1i64 as Int8)
+let b = ("str" as Int64)
 let j = @Json(
     {
         "key1": a, // 1
@@ -169,3 +169,4 @@ main(): Int64 {
 ```
 
 ### 参考
+https://github.com/Zxilly/json-cj
