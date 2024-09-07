@@ -4,13 +4,14 @@
 public macro Json(input: Tokens): Tokens
 ```
 在`@Json`中直接编写json
-### Extends
+### Interfaces
 ##### public interface ToJsonValue
 ```
 func toJsonValue(): JsonValue
 ```
 提供转换成`JsonValue`的能力
 
+### Extends
 ##### extend Bool <: ToJsonValue
 ```
 public func toJsonValue(): JsonBool

@@ -6,7 +6,7 @@
 
 ### @Json
 ##### @Json中使用变量
-变量的类型需要继承`ToJsonValue`接口
+变量的类型需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
 ```
 let str = "string"
 let j = @Json(
@@ -18,7 +18,7 @@ let j = @Json(
 ```
 
 ##### @Json中使用表达式
-表达式的类型需要继承`ToJsonValue`接口
+表达式的类型需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
 ```
 let ofStr = {i: String => "[${i}]"}
 let name = "Elis"
@@ -32,7 +32,7 @@ let j = @Json(
 ```
 
 ##### @Json中使用数组(`Array`/`ArryaList`)动态生成Json数组
-数组元素需要继承`ToJsonValue`接口
+数组元素需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
 ```
 let arr1 = [1, 2, 3, 4, 5]
 let arr2 = ArrayList(["a", "b", "c"])
@@ -45,7 +45,7 @@ let j = @Json(
 ```
 
 ##### @Json中`HashMap`/`TreeMap`动态生成Json对象
-key类型必须是`String`，value需要继承`ToJsonValue`
+key类型必须是`String`，value需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
 ```
 let map1 = HashMap<String, ToJsonValue([("name", "aaa"), ("age", 23)])
 let map2 = TreeMap<String, Int64>([("k1": 17), ("k2", 19)])
@@ -58,7 +58,7 @@ let j = @Json(
 ```
 
 ##### @Json中使用Option(Some/None)
-`Option<T>`,T需要继承`ToJsonValue`
+`Option<T>`,T需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
 ```
 let a = (1i64 as Int64)
 let b = (1i64 as Int8)
@@ -71,7 +71,7 @@ let j = @Json(
 ```
 
 ##### @Json中嵌套使用JsonValue
-这其实也是@Json中使用表达式的一部分，`JsonValue`也继承了`ToJsonValue`
+这其实也是@Json中使用表达式的一部分，`JsonValue`也继承了[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
 ```
 let a = @Json(4 * 8 + 2)
 let b = @Json("jsonString")
@@ -111,8 +111,8 @@ import juson.*
 ```cj
 import std.collection.HashMap
 import encoding.json.*
-import juson.*
 import juson.ext.ToJsonValue
+import juson.*
 ```
 
 ### API
@@ -121,7 +121,7 @@ import juson.ext.ToJsonValue
 ### 注意
 - 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
 - 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
-- 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承`ToJsonValue`接口
+- 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
 - 虽然可以编译运行，但是建议不要在@Json中嵌套@Json，会影响编译期宏展开速度
 
 ### 导入项目
