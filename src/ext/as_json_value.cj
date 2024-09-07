@@ -57,3 +57,7 @@ extend<T> Option<T> <: ToJsonValue where T <: ToJsonValue {
         }
     }
 }
+
+extend JsonValue <: ToJsonValue {
+    public func toJsonValue(): JsonValue {this}
+}
