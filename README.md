@@ -127,6 +127,3 @@ main(): Int64 {
     return 0
 }
 ```
-
-### 参考
-https://github.com/Zxilly/json-cj
