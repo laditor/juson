@@ -120,26 +120,18 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, String>): T
     if (map.get("required") == "true") {
         let exceptionStr = Token(STRING_LITERAL, "Excepted required field \"${varName}\" , not found in json")
         quote (
-            if (jsonObject.containsKey($(varName))) {
-                $result
-            } else {
-                throw IllegalArgumentException($(exceptionStr))
-            }
+            if (jsonObject.containsKey($(varName))) { $result } 
+            else { throw IllegalArgumentException($(exceptionStr)) }
         )
     } else if (map.contains("default")) {
         let defaultValue = cangjieLex(map["default"], true)
         quote (
-            if (jsonObject.containsKey($(varName))) {
-                $result
-            } else {
-                result.$(varDecl.identifier) = $defaultValue
-            }
+            if (jsonObject.containsKey($(varName))) { $result} 
+            else { result.$(varDecl.identifier) = $defaultValue }
         )
     } else {
         quote (
-            if (jsonObject.containsKey($(varName))) {
-                $result
-            }
+            if (jsonObject.containsKey($(varName))) { $result }
         )
     }
 }
