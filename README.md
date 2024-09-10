@@ -4,6 +4,9 @@
 - 在Json中使用**变量**和**表达式**
 - 尾随逗号支持
 
+>目前自动序列化/反序列化宏`@Juson`正在开发中，请在feature/json-serializable分支上查看
+>导入方式： juson = { git = "https://gitcode.com/Dacec/juson", branch = "feature/json-serializable", output-type = "static"}
+
 ### @Json
 ##### @Json中使用变量
 变量的类型需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
