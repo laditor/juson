@@ -1,108 +1,24 @@
 # juson
 
+### @Juson
+用`@Juson`自动序列化/反序列化`class`/`struct`
+
+### @Json
 用Json宏生成JsonValue
 - 在Json中使用**变量**和**表达式**
 - 尾随逗号支持
+### @Field
+为`@Juson`类/结构体中成员变量设置属性
+- `name`：指定Json中的字段名，默认使用成员变量名
+- `default`：指定默认值，反序列化时若Json中无该字段则使用默认值
+- `required`：指定反序列化时是否必须存在该字段，默认`false`
+    - `true`：反序列化时若Json中无该字段则抛出异常
+    - `false`：反序列化时Json可以没有该字段
+- `skip`：指定字段跳过序列化或反序列化
+  - `all`：跳过所有序列化和反序列化
+  - `serializing`：跳过序列化
+  - `deserializing`：跳过反序列化
 
-### @Json
-##### @Json中使用变量
-变量的类型需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
-```
-let str = "string"
-let j = @Json(
-    {
-        "array": [1, "string", true, null, {"key": "value"}],
-        "array1": [1, 2, str], // [1, 2, "string"]
-    }
-)
-```
-
-##### @Json中使用表达式
-表达式的类型需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
-```
-let ofStr = {i: String => "[${i}]"}
-let name = "Elis"
-let j = @Json(
-    {
-        "key1": 4 * 3, // 12
-        "key2" |> ofStr: ofStr(name), // "[key2]": "[value2]"
-        "key3" * 2: "value3" + "_plus", // "key3key3": "value3_plus"
-    }
-)
-```
-
-##### @Json中使用数组(`Array`/`ArryaList`)动态生成Json数组
-数组元素需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
-```
-let arr1 = [1, 2, 3, 4, 5]
-let arr2 = ArrayList(["a", "b", "c"])
-let j = @Json(
-    {
-        "key1": arr1, // [1, 2, 3, 4, 5]
-        "key2": arr2  // ["a", "b", "c"]
-    }
-)
-```
-
-##### @Json中`HashMap`/`TreeMap`动态生成Json对象
-key类型必须是`String`，value需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
-```
-let map1 = HashMap<String, ToJsonValue>([("name", "aaa"), ("age", 23)])
-let map2 = TreeMap<String, Int64>([("k1", 17), ("k2", 19)])
-let j = @Json(
-    {
-        "key1": map1, // {"name": "aaa", "age": 23}
-        "key2": map2  // {"k1": 17, "k2": 19}
-    }
-)
-```
-
-##### @Json中使用Option(Some/None)
-`Option<T>`,T需要继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
-```
-let a = (1i64 as Int64)
-let b = ("str" as Int64)
-let j = @Json(
-    {
-        "key1": a, // 1
-        "key2": b  // null
-    }
-)
-```
-
-##### @Json中嵌套使用JsonValue
-这其实也是@Json中使用表达式的一部分，`JsonValue`也继承了[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)
-```
-let a = @Json(4 * 8 + 2)
-let b = @Json("jsonString")
-let j = @Json(
-    {
-        "key1": a, // 34
-        "key2": b,  // "jsonString"
-        "key3": @Json({
-            "innerKey": "innerValue"
-        })
-    }
-)
-```
-
-##### @Json编写一般json
-很多时候不需要上面的特性，一般的json就够用了
-```
-let j = @Json(
-    {
-        "name": "Jnnn",
-        "age": 24,
-        "isEmployed": true,
-        "children": null,
-        "address": {
-            "city": "city1",
-            "zipcode": 10001
-        },
-        "skills": ["Cangjie", "Rust", "Go"]
-    }
-)
-```
 ### import
 ```cj
 import juson.*
@@ -110,33 +26,77 @@ import juson.*
 上面的`import`相当于导入如下内容
 ```cj
 import std.collection.HashMap
-import encoding.json.*
-import juson.ext.ToJsonValue
-import juson.*
+import encoding.json.{JsonValue, JsonBool, JsonInt, JsonFloat, JsonString, JsonArray, JsonObject, JsonNull}
+import juson.core.{JusonSerializable, JusonDeserializable}
 ```
-
-### API
-[API文档](./docs/api.md)
-
-### 注意
-- 外部定义的`null`变量无法在宏内使用，宏内`null`被识别为`JsonNull()`
-- 宏内部的数组优先被识别为`JsonArray`，而不是`Array`字面量。要宏内创建Array实例，请使用`Array<T>([...])`
-- 宏内作为key的变量/表达式类型必须是`String`，其他地方的变量/表达式必须继承[`ToJsonValue`](./docs/api.md#public-interface-tojsonvalue)接口
-- 虽然可以编译运行，但是建议不要在@Json中嵌套@Json，会影响编译期宏展开速度
-
 ### 导入项目
 将下面内容放在`cjpm.toml`的`[dependencies]`下<br>选**一种**你喜欢的就行
 ```
 [dependencies.juson]
   git = "https://gitcode.com/Dacec/juson"
-  branch = "main"
+  branch = "feature/json-serializable"
   output-type = "static"
 ```
 ```
-juson = { git = "https://gitcode.com/Dacec/juson", branch = "main", output-type = "static"}
+juson = { git = "https://gitcode.com/Dacec/juson", branch = "feature/json-serializable", output-type = "static"}
 ```
 
-### 案例
+### @Juson案例
+```cj
+import juson.*
+
+@Juson
+class Address {
+    @Field[skip=deserializing]
+    var street: String = ""
+
+    var city: String = ""
+}
+ 
+@Juson 
+struct User {
+    @Field[name="username", default="unknown"]
+    var name: String = "" 
+
+    @Field[required=true]
+    var age: Int64 = 0
+
+    @Field[skip=serializing]
+    var email: String = ""
+
+    @Field[name="住址"]
+    var address: Address = Address()
+}
+ 
+
+main(): Int64 {
+    var user1 = User()
+    user1.name = "Joana"
+    user1.age = 23
+    user1.email = "joana@xxx.com"
+    user1.address.street = "456 Elm St"
+    user1.address.city = "San Francisco"
+    println(user1.jusonSerialize().toJsonString())
+
+    let j = @Json({
+        // "username": "Joana",
+        "age": 23,
+        "email": "joana@xxx.com",
+        "住址": {
+            "street": "456 Elm St",
+            "city": "San Francisco", 
+        },
+    })
+    let user2 = User.jusonDeserialize(j)
+    println("User2.name: ${user2.name}")
+    println("User2.age: ${user2.age}")
+    println("User2.email: ${user2.email}")
+    println("User2.address.street: ${user2.address.street}")
+    println("User2.address.city: ${user2.address.city}")
+    0
+}
+```
+### @Json案例
 ```cj
 import std.collection.{map, collectArray}
 import juson.*
