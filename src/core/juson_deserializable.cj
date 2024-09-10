@@ -7,12 +7,9 @@ public interface JusonDeserializable<T> {
     static func jusonDeserialize(jsonValue: JsonValue): T
 }
 
-extend JsonValue <: JusonDeserializable<JsonValue> {
-    public static func jusonDeserialize(jsonValue: JsonValue): JsonValue { jsonValue }
-}
-
 extend Bool <: JusonDeserializable<Bool> {
     public static func jusonDeserialize(jsonValue: JsonValue): Bool { jsonValue.asBool().getValue() }
+    public static func jusonDefaultValue(): Bool { false }
 }
 
 extend Int64 <: JusonDeserializable<Int64> {

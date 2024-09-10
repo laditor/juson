@@ -7,8 +7,8 @@ protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
     try {
         match (parseDecl(input)) {
             case v: VarDecl => varDecl = v
-            case d: Decl => 
-                diagReport(DiagReportLevel.ERROR, input, "Expected a variable declaration, found ${d.keyword.value}", 
+            case d: Decl =>
+                diagReport(DiagReportLevel.ERROR, input, "Expected a variable declaration, found ${d.keyword.value}",
                     "Unsupported declaration")
                 throw ASTException("Unexpected declaration")
         }
@@ -20,10 +20,11 @@ protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
     // 解析属性
     let attrStrs = ArrayList<String>()
     for (attr in parseFieldAttrs(attrs)) {
-        processField(attr) |> attrStrs.append
+        processField(attr)
+        attrStrs.append(attr.leftExpr.toTokens()[0].value)
     }
     setItem("variable-name", varDecl.identifier.value)
-    setItem("variable-attrs", String.join(attrStrs.toArray(), delimiter:","))
+    setItem("variable-attrs", String.join(attrStrs.toArray(), delimiter: ","))
     input
 }
 
@@ -31,54 +32,79 @@ protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
 func parseFieldAttrs(attrs: Tokens): Array<AssignExpr> {
     let exprs = ArrayList<AssignExpr>()
     var index = 0
-    while(true) {
-        let (expr, nextIndex) = parseExprFragment(attrs, startFrom: index)
-        match (expr) {
-            case a: AssignExpr where a.leftExpr.toTokens().size == 1 && a.rightExpr.toTokens().size == 1 => 
-                exprs.append(a)
-            case e => 
-                diagReport(DiagReportLevel.ERROR, attrs[index..nextIndex], "Invalid attribute",
-                    "Invalid attribute")
-                throw ASTException("Invalid attribute")
+    while (true) {
+        try {
+            let (expr, nextIndex) = parseExprFragment(attrs, startFrom: index) // throws ParseASTException
+            match (expr) {
+                case a: AssignExpr where a.leftExpr.toTokens().size == 1 => exprs.append(
+                    a)
+                case e =>
+                    diagReport(DiagReportLevel.ERROR, attrs[index..nextIndex], 'Expected "attr = value", found \"${e.toTokens()}\"',
+                        "Invalid attribute")
+                    throw ASTException("Invalid attribute")
+            }
+
+            if (nextIndex >= attrs.size) {
+                break
+            }
+            if (attrs[nextIndex].kind != TokenKind.COMMA) {
+                diagReport(DiagReportLevel.ERROR, attrs[nextIndex..nextIndex + 1],
+                    "Expected \",\", found \"${attrs[nextIndex].value}\"",
+                    "Input must be a comma-separated list of assign expressions")
+                throw ASTException("Input must be a comma-separated list of expressions")
+            }
+            if (nextIndex == attrs.size - 1) {
+                diagReport(DiagReportLevel.ERROR, attrs[nextIndex..nextIndex + 1], "Expected expression after \",\"",
+                    "Input does not allow trailing comma")
+                throw ASTException("Input does not allow trailing comma")
+            }
+            index = nextIndex + 1
+        } catch (_: ParseASTException) {
+            diagReport(DiagReportLevel.ERROR, attrs[index..], 'Expected "attr = value", found \"${attrs[index..]}\"',
+                "Invalid attribute")
+            throw ASTException("Invalid attribute")
         }
-        
-        if (nextIndex >= attrs.size)  {
-            break
-        }
-        if (attrs[nextIndex].kind != TokenKind.COMMA) {
-            diagReport(DiagReportLevel.ERROR, attrs[nextIndex..nextIndex+1],
-                       "Expected comma, found ${attrs[nextIndex].value}",
-                       "Input must be a comma-separated list of assign expressions")
-            throw ASTException("Input must be a comma-separated list of expressions")
-        }
-        if (nextIndex == attrs.size-1) {
-            diagReport(DiagReportLevel.ERROR, attrs[nextIndex..nextIndex+1],
-                       "Expected expression after comma",
-                       "Input does not allow trailing comma")
-            throw ASTException("Input does not allow trailing comma")
-        }
-        index = nextIndex + 1
     }
     exprs.toArray()
 }
 
 // 每个属性的处理函数，新增属性时需要在这里添加处理逻辑
-func processField(attr: AssignExpr): String {
+func processField(attr: AssignExpr): Unit {
     let name = attr.leftExpr.toTokens()[0].value
-    match (name) {
-        case "name" => match (attr.rightExpr) {
-            case l: LitConstExpr where l.literal.kind == STRING_LITERAL => 
-                setItem("name", l.literal.value)
-                "name"
+    // 处理属性
+    if (name == "name") {
+        match (attr.rightExpr) {
+            case l: LitConstExpr where l.literal.kind == STRING_LITERAL => setItem("name", l.literal.value)
             case _ => 
-                let value = attr.rightExpr.toTokens()[0].value
-                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(), "Invalid attribute value ${value}",
-                "Invalid attribute value")
-                throw ASTException("Invalid attribute value")
+                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                    'Expect a string literal, found \"${attr.rightExpr.toTokens()}\"',
+                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }
-        case _ => diagReport(DiagReportLevel.ERROR, attr.leftExpr.toTokens(), "Invalid attribute name ${name}",
-            "Invalid attribute name ${name}")
-            throw ASTException("Invalid attribute name ${name}")
+    } else if (name == "required") {
+        match (attr.rightExpr) {
+            case l: LitConstExpr where l.literal.kind == BOOL_LITERAL => setItem("required", l.literal.value)
+            case _ => 
+                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                    'Expect "true" or "false", found \"${attr.rightExpr.toTokens()}\"',
+                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+        }
+    } else if (name == "default") {
+        setItem("default", attr.rightExpr.toTokens().toString())
+    } else if (name == "skip") {
+        match (attr.rightExpr) {
+            case r: RefExpr where r.identifier.value == "all" || r.identifier.value == "serializing" ||
+                r.identifier.value == "deserializing" => setItem("skip", r.identifier.value)
+            case _ =>
+                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                    'Expect "all", "serializing" or "deserializing", found "${attr.rightExpr.toTokens()}"',
+                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"") 
+                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+        }
+    } else {
+        diagReport(DiagReportLevel.ERROR, attr.leftExpr.toTokens(), "Invalid attribute name \"${name}\"",
+            "Invalid attribute name \"${name}\"")
+        throw ASTException("Invalid attribute name \"${name}\"")
     }
 }
-
