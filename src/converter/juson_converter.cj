@@ -133,7 +133,7 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
         case Some(d) =>
             quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
                 case Some(v) => $(varDecl.declType).jusonDeserialize(v)
-                case None => $(varDecl.declType).jusonDeserialize($d)
+                case None => $d
             })
         case None =>
             let exceptionStr = "Missing field \"${varName}\""
