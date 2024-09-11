@@ -1,5 +1,6 @@
 protected package juson.converter
-import juson.converter.helper.allArgCtor
+
+import juson.converter.helper.allNamedArgCtor
 import juson.exception.DeserializationException
 import encoding.json.JsonInt
 
@@ -89,7 +90,7 @@ func jusonBody(body: Body, clazzId: Token): Unit {
         ))
     }
     // 全参数构造函数
-    body.decls.append(allArgCtor(varDecls, varAttrMap))
+    body.decls.append(allNamedArgCtor(varDecls, varAttrMap))
 }
 
 // jusonSerialize中字段的序列化Tokens
@@ -116,7 +117,7 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
             a
         case None => 
             let exceptionStr = "Missing field \"${varDecl.identifier.value}\""
-            return quote(match (jsonObject.get($(varDecl.identifier.value))) {
+            return quote($(varDecl.identifier): match (jsonObject.get($(varDecl.identifier.value))) {
                 case Some(v) => $(varDecl.declType).jusonDeserialize(v)
                 case None => throw DeserializationException($(exceptionStr))
             })
@@ -130,13 +131,13 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
     // 处理default属性
     match (map.get("default")) {
         case Some(d) =>
-            quote(match (jsonObject.get($(varName))) {
+            quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
                 case Some(v) => $(varDecl.declType).jusonDeserialize(v)
                 case None => $(varDecl.declType).jusonDeserialize($d)
             })
         case None =>
             let exceptionStr = "Missing field \"${varName}\""
-            quote(match (jsonObject.get($(varName))) {
+            quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
                 case Some(v) => $(varDecl.declType).jusonDeserialize(v)
                 case None => throw DeserializationException($(exceptionStr))
             })
