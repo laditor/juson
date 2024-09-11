@@ -1,4 +1,4 @@
-package juson.converter
+protected package juson.converter
 
 protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
     // 检查，必须是变量声明
@@ -74,7 +74,7 @@ func processField(attr: AssignExpr): Unit {
     // 处理属性
     if (name == "name") {
         match (attr.rightExpr) {
-            case l: LitConstExpr where l.literal.kind == STRING_LITERAL => setItem("name", l.literal.value)
+            case l: LitConstExpr where l.literal.kind == STRING_LITERAL => setItem("name", l.toTokens())
             case _ => 
                 diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
                     'Expect a string literal, found \"${attr.rightExpr.toTokens()}\"',
@@ -83,7 +83,7 @@ func processField(attr: AssignExpr): Unit {
         }
     } else if (name == "required") {
         match (attr.rightExpr) {
-            case l: LitConstExpr where l.literal.kind == BOOL_LITERAL => setItem("required", l.literal.value)
+            case l: LitConstExpr where l.literal.kind == BOOL_LITERAL => setItem("required", l.toTokens())
             case _ => 
                 diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
                     'Expect "true" or "false", found \"${attr.rightExpr.toTokens()}\"',
@@ -91,11 +91,11 @@ func processField(attr: AssignExpr): Unit {
                 throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }
     } else if (name == "default") {
-        setItem("default", attr.rightExpr.toTokens().toString())
+        setItem("default", attr.rightExpr.toTokens())
     } else if (name == "skip") {
         match (attr.rightExpr) {
             case r: RefExpr where r.identifier.value == "all" || r.identifier.value == "serializing" ||
-                r.identifier.value == "deserializing" => setItem("skip", r.identifier.value)
+                r.identifier.value == "deserializing" => setItem("skip", r.toTokens())
             case _ =>
                 diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
                     'Expect "all", "serializing" or "deserializing", found "${attr.rightExpr.toTokens()}"',

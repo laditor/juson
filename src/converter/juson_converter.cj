@@ -1,4 +1,7 @@
-package juson.converter
+protected package juson.converter
+import juson.converter.helper.allArgCtor
+import juson.exception.DeserializationException
+import encoding.json.JsonInt
 
 protected enum JsonSerializableFunc {
     | JusonSerialize
@@ -39,104 +42,139 @@ func jusonStruct(clazz: StructDecl): Tokens {
 
 func jusonBody(body: Body, clazzId: Token): Unit {
     let (varDecls, varAttrMap, hasFuncs) = collectVarAttrsHasFuncs(body)
+    checkVarNameConflict(varDecls, varAttrMap)
     // serialize
     if (!hasFuncs[0]) {
-        let pairArray = match (varDecls |> map {
+        let pairsOpt = varDecls |> map {
             v => jusonSerializeField(v, varAttrMap.get(v.identifier.value))
         } |> filter {i => i.size > 0} |> reduce {
             acc, v => acc + Token(COMMA) + Token(NL) + v
-        }) {
-            case Some(s) => Token(LSQUARE) + s + Token(RSQUARE)
-            case None => quote()
         }
         body.decls.append(
             FuncDecl(
             quote(
             public func jusonSerialize(): JsonObject {
-                JsonObject(HashMap<String, JsonValue>($pairArray))
+                JsonObject([
+                    $(pairsOpt ?? Tokens())
+                ] |> collectHashMap<String, JsonValue>)
             }
         )
         ))
     }
     // deserialize
     if (!hasFuncs[1]) {
-        let desers = match (varDecls |> map {
+        let paramsOpt = varDecls |> map {
             v => jusonDeserializeField(v, varAttrMap.get(v.identifier.value))
         } |> filter {i => i.size > 0} |> reduce {
-            acc, v => acc + Token(NL) + v
-        }) {
-            case Some(s) => s
-            case None => quote()
+            acc, v => acc + Token(COMMA) + Token(NL) + v
         }
         body.decls.append(
             FuncDecl(
             quote(
             public static func jusonDeserialize(jsonValue: JsonValue): $clazzId {
-                let jsonObject = jsonValue.asObject()
-                var result = $clazzId()
-                $desers
-                return result
+                match (jsonValue) {
+                    case jsonObject: JsonObject =>
+                        $(clazzId)(
+                            $(paramsOpt ?? Tokens())
+                        )
+                    case _: JsonInt => throw DeserializationException("Expected JsonObject, found JsonInt")
+                    case _: JsonFloat => throw DeserializationException("Expected JsonObject, found JsonFloat")
+                    case _: JsonString => throw DeserializationException("Expected JsonObject, found JsonString")
+                    case _: JsonBool => throw DeserializationException("Expected JsonObject, found JsonBool")
+                    case _: JsonArray => throw DeserializationException("Expected JsonObject, found JsonArray")
+                    case _: JsonNull => throw DeserializationException("Expected JsonObject, found JsonNull")
+                }
             }
         )
         ))
     }
+    // 全参数构造函数
+    body.decls.append(allArgCtor(varDecls, varAttrMap))
 }
 
 // jusonSerialize中字段的序列化Tokens
-func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, String>): Tokens {
+func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tokens {
     let map = match (attrs) {
         case Some(a) => a
-        case None => return quote (($(varDecl.identifier.value), $(varDecl.identifier).jusonSerialize()))
+        case None => return quote(($(varDecl.identifier.value), $(varDecl.identifier).jusonSerialize()))
     }
     // 处理skip属性
-    if (map.get("skip") == "all" || map.get("skip") == "serializing") {
+    if (map.get("skip")?[0].value == "all" || map.get("skip")?[0].value == "serializing") {
         return quote()
     }
 
     // 处理name属性
-    let varName = map.get("name") ?? varDecl.identifier.value
-    quote (($(varName), $(varDecl.identifier).jusonSerialize()))
+    let varName = map.get("name")?[0].value ?? varDecl.identifier.value
+    quote(($(varName), $(varDecl.identifier).jusonSerialize()))
 }
 
 // jusonSerialize中字段的序列化Tokens
-func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, String>): Tokens {
+func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tokens {
     let map = match (attrs) {
         case Some(a) =>
-            handleDeserAttrConfliction(varDecl, a)
+            checkDeserAttrConflict(varDecl, a)
             a
-        case None => return quote (
-            result.$(varDecl.identifier) = $(varDecl.declType).jusonDeserialize(jsonObject[$(varDecl.identifier.value)]))
+        case None => 
+            let exceptionStr = "Missing field \"${varDecl.identifier.value}\""
+            return quote(match (jsonObject.get($(varDecl.identifier.value))) {
+                case Some(v) => $(varDecl.declType).jusonDeserialize(v)
+                case None => throw DeserializationException($(exceptionStr))
+            })
     }
     // 处理skip属性
-    if (map.get("skip") == "all" || map.get("skip") == "deserializing") {
+    if (map.get("skip")?[0].value == "all" || map.get("skip")?[0].value == "deserializing") {
         return quote()
     }
-
     // 处理name属性
-    let varName = map.get("name") ?? varDecl.identifier.value
-
-    // 处理required和default属性
-    let result = quote (result.$(varDecl.identifier) = $(varDecl.declType).jusonDeserialize(jsonObject[$(varName)]))
-    if (map.get("required") == "true") {
-        let exceptionStr = Token(STRING_LITERAL, "Excepted required field \"${varName}\" , not found in json")
-        quote (
-            if (jsonObject.containsKey($(varName))) { $result } 
-            else { throw IllegalArgumentException($(exceptionStr)) }
-        )
-    } else if (map.contains("default")) {
-        let defaultValue = cangjieLex(map["default"], true)
-        quote (
-            if (jsonObject.containsKey($(varName))) { $result} 
-            else { result.$(varDecl.identifier) = $defaultValue }
-        )
-    } else {
-        quote (
-            if (jsonObject.containsKey($(varName))) { $result }
-        )
+    let varName = map.get("name")?[0].value ?? varDecl.identifier.value
+    // 处理default属性
+    match (map.get("default")) {
+        case Some(d) =>
+            quote(match (jsonObject.get($(varName))) {
+                case Some(v) => $(varDecl.declType).jusonDeserialize(v)
+                case None => $(varDecl.declType).jusonDeserialize($d)
+            })
+        case None =>
+            let exceptionStr = "Missing field \"${varName}\""
+            quote(match (jsonObject.get($(varName))) {
+                case Some(v) => $(varDecl.declType).jusonDeserialize(v)
+                case None => throw DeserializationException($(exceptionStr))
+            })
     }
 }
 
-func handleDeserAttrConfliction(varDecl: VarDecl, attrs: HashMap<String, String>): Unit {
+// 检查name冲突
+func checkVarNameConflict(varDecls: Array<VarDecl>, varAttrMap: HashMap<String, HashMap<String, Tokens>>): Unit {
+    let nameVarMap = varDecls |> map {v => (v.identifier.value, v)} |> collectHashMap
+    let existingNames = varDecls |> map {v => v.identifier.value} |> collectHashSet
+    let conflictReports = ArrayList<() -> Unit>()
+    for ((name, attrs) in varAttrMap) {
+        let curr = name
+        match (attrs.get("name")) {
+            case Some(n) =>
+                let value = n[0].value
+                if (n.size == 1 && n[0].kind == STRING_LITERAL && existingNames.contains(value) && value != curr) {
+                    conflictReports.append(
+                        {
+                        => diagReport(DiagReportLevel.ERROR, nameVarMap[value].toTokens(),
+                            "Conflicting field name \"${n}\": existing field \"${curr}\" has been renamed to \"${n}\"",
+                            "Conflicting field name \"${n}\": existing field \"${curr}\" has been renamed to \"${n}\"")
+                    })
+
+                }
+            case None => ()
+        }
+    }
+    if (conflictReports.size > 0) {
+        for (report in conflictReports) {
+            report()
+        }
+        throw ASTException("Conflicting field name")
+    }
+}
+
+// 检查反序列化过程属性冲突
+func checkDeserAttrConflict(varDecl: VarDecl, attrs: HashMap<String, Tokens>): Unit {
     let _ = varDecl
     let conflict = {
         kv1: String, kv2: String =>
@@ -144,22 +182,22 @@ func handleDeserAttrConfliction(varDecl: VarDecl, attrs: HashMap<String, String>
             "Conflicting attributes: \"${kv1}\" and \"${kv2}\"")
         throw ASTException("Conflicting attributes: \"${kv1}\" and \"${kv2}\"")
     }
-    if (attrs.get("required") == "true" && attrs.get("skip") == "all") { // required和skip=all冲突
+    if (attrs.get("required")?[0].value == "true" && attrs.get("skip")?[0].value == "all") { // required和skip=all冲突
         conflict("required=true", "skip=all")
     }
-    if (attrs.get("required") == "true" && attrs.get("skip") == "deserializing") { // required和skip=deserializing冲突
+    if (attrs.get("required")?[0].value == "true" && attrs.get("skip")?[0].value == "deserializing") { // required和skip=deserializing冲突
         conflict("required=true", "skip=deserializing")
     }
-    if (attrs.get("required") == "true" && attrs.contains("default")) { // required和default冲突
+    if (attrs.get("required")?[0].value == "true" && attrs.contains("default")) { // required和default冲突
         conflict("required=true", "default")
     }
 }
 
 // hasFuncs: 0-serialize, 1-deserialize
-func collectVarAttrsHasFuncs(body: Body): (Array<VarDecl>, HashMap<String, HashMap<String, String>>, Array<Bool>) {
+func collectVarAttrsHasFuncs(body: Body): (Array<VarDecl>, HashMap<String, HashMap<String, Tokens>>, Array<Bool>) {
     let varDecls = ArrayList<VarDecl>() // 收集var变量
-    let hasFuncs = Array<Bool>(2, item: false) //判断是否已存在相关函数，[0]-serialize, [1]-deserialize
-    let varAttrMap = HashMap<String, HashMap<String, String>>() // 收集var的属性
+    let hasFuncs = Array<Bool>(2, repeat: false) //判断是否已存在相关函数，[0]-serialize, [1]-deserialize
+    let varAttrMap = HashMap<String, HashMap<String, Tokens>>() // 收集var的属性
     var declT: Decl = VarDecl() // 记录声明用于报错
 
     // 获取Field宏发送的信息
@@ -168,9 +206,9 @@ func collectVarAttrsHasFuncs(body: Body): (Array<VarDecl>, HashMap<String, HashM
     for (msg in messages) {
         let varName = msg.getString("variable-name")
         let varAttrs = msg.getString("variable-attrs").split(",")
-        let attrMap = HashMap<String, String>()
+        let attrMap = HashMap<String, Tokens>()
         for (a in varAttrs) {
-            attrMap.put(a, msg.getString(a))
+            attrMap.put(a, msg.getTokens(a))
         }
         varAttrMap.put(varName, attrMap)
     }

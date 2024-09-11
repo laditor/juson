@@ -1,4 +1,4 @@
-package juson.converter
+protected package juson.converter
 
 enum JsonParserState {
     | Init
@@ -146,7 +146,8 @@ func parseObject(input: Tokens, pos: Int64): (Tokens, Int64) {
     let tks = match (list |> reduce {acc, i => acc + Token(COMMA) + Token(NL) + i}) {
         case Some(v) =>
             let pairs = Token(NL) + v + Token(NL)
-            quote(JsonObject(HashMap<String, JsonValue>([$pairs])))
+            quote(JsonObject([
+            $pairs] |> collectHashMap<String, JsonValue>))
         case None => quote(JsonObject())
     }
     (tks, currPos)

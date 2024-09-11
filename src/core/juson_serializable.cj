@@ -2,6 +2,7 @@ package juson.core
 
 import encoding.json.{JsonValue, JsonBool, JsonInt, JsonFloat, JsonString, JsonArray, JsonObject, JsonNull}
 import std.collection.{HashMap, TreeMap, ArrayList, map, collectArray}
+import std.collection.collectHashMap
 
 public interface JusonSerializable {
     func jusonSerialize(): JsonValue
@@ -29,27 +30,25 @@ extend String <: JusonSerializable {
 
 extend<T> Array<T> <: JusonSerializable where T <: JusonSerializable {
     public func jusonSerialize(): JsonArray {
-        JsonArray(Array(this.size, {i => this[i].jusonSerialize()}))
+        JsonArray(this.map{i => i.jusonSerialize()})
     }
 }
 
 extend<T> ArrayList<T> <: JusonSerializable where T <: JusonSerializable {
     public func jusonSerialize(): JsonArray {
-        JsonArray(Array(this.size, {i => this[i].jusonSerialize()}))
+        JsonArray(this.toArray().map{i => i.jusonSerialize()})
     }
 }
 
 extend<T> HashMap<String, T> <: JusonSerializable where T <: JusonSerializable {
     public func jusonSerialize(): JsonObject {
-        let arr = this.toArray()
-        return JsonObject(HashMap(Array(arr.size, {i => (arr[i][0], arr[i][1].jusonSerialize())})))
+        return JsonObject(this.toArray().map{i => (i[0], i[1].jusonSerialize())} |> collectHashMap)
     }
 }
 
 extend<T> TreeMap<String, T> <: JusonSerializable where T <: JusonSerializable {
     public func jusonSerialize(): JsonObject {
-        let arr = this.toArray()
-        return JsonObject(HashMap(Array(arr.size, {i => (arr[i][0], arr[i][1].jusonSerialize())})))
+        return JsonObject(this.toArray().map{i => (i[0], i[1].jusonSerialize())} |> collectHashMap)
     }
 }
 

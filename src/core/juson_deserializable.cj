@@ -1,15 +1,24 @@
 package juson.core
 
-import encoding.json.{JsonValue, JsonNull}
+import encoding.json.{JsonValue, JsonBool, JsonInt, JsonFloat, JsonString, JsonArray, JsonObject, JsonNull}
 import std.collection.{HashMap, TreeMap, ArrayList, map, collectArray}
+import std.math.numeric.BigInt
+import std.time.DateTime
 
 public interface JusonDeserializable<T> {
     static func jusonDeserialize(jsonValue: JsonValue): T
 }
 
+extend JsonValue <: JusonDeserializable<JsonValue> {
+    public static func jusonDeserialize(jsonValue: JsonValue): JsonValue { jsonValue }
+}
+
 extend Bool <: JusonDeserializable<Bool> {
     public static func jusonDeserialize(jsonValue: JsonValue): Bool { jsonValue.asBool().getValue() }
-    public static func jusonDefaultValue(): Bool { false }
+}
+
+extend DateTime <: JusonDeserializable<DateTime> {
+    public static func jusonDeserialize(jsonValue: JsonValue): DateTime { DateTime.parse(jsonValue.asString().getValue()) }
 }
 
 extend Int64 <: JusonDeserializable<Int64> {
