@@ -60,6 +60,8 @@ Juson 内置对多种基本类型的支持，包括整数、浮点数、布尔�
 以下是一个简单的使用示例，展示如何定义一个类并通过 Juson 库进行序列化和反序列化：
 
 ```cj
+import juson.*
+
 @Juson
 class User { // 也可以定义一个struct
     @Field[name="username"]
