@@ -109,3 +109,24 @@ main(): Int64 {
 ```
 juson = { git = "https://gitcode.com/Dacec/juson", branch = "main", output-type = "static"}
 ```
+
+## 贡献
+欢迎提交 PR 和 Issue。
+
+## Q&A
+为什么不使用标准库的接口？
+
+> 因为标准库的接口不够灵活。
+> - `encoding.json::ToJson`接口的`fromJson`方法返回`DataModel`，用`ToJson`接口就必须使用`DataModel`作为中转，浪费性能。
+> - `encoding.json.stream::JsonSerializable`使用了`JsonWriter`，`encoding.json.stream::JsonSerializable`使用了`JsonReader`。使用这两个接口需要做额外封装，增加复杂度。
+> - `serialization::Serializable`，这个接口也是用`DataModel`作为中转，不够灵活。
+> 
+> 因为以上几点，最终决定用自定义的接口。
+
+为什么接口取名叫`JusonXXX`?
+
+> 因为和Json序列化/反序列化相关的名称就几个，标准库把`Serializable`、`ToJson`用了，也没什么好选择了，索性直接用个性化的名称。
+
+接口的方法为什么不叫`serialize`/`deserialize`?
+
+>因为`serialization::Serializable`接口里面有`serialize`/`deserialize`方法，而且还对基础数据类型做了扩展。按照仓颉现有的扩展机制，如果我用`serialize`/`deserialize`作为方法名，然后对基础数据类型做扩展，结果就是冲突报错。所以为了避免冲突，就用了`jusonXXX`的命名。
