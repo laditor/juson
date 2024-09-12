@@ -11,9 +11,9 @@ Juson 是一个高效且灵活的 JSON 序列化和反序列化库，旨在简�
 ```cj
 @Juson
 class Person {
-    @Field(name="name")
+    @Field[name="name"]
     var name: String
-    @Field(default=0)
+    @Field[default=0]
     var age: Int
 }
 ```
@@ -23,7 +23,7 @@ class Person {
 `@Field` 注解允许开发者为字段配置不同的属性，如指定 JSON 中的键名、默认值以及字段的跳过行为（如序列化时跳过、反序列化时跳过等），提供了灵活的使用场景。
 
 ```cj
-@Field(name="user_age", default=18, skip=serializing)
+@Field[name="user_age", default=18, skip=serializing]
 var age: Int
 ```
 
