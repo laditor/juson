@@ -12,7 +12,7 @@ protected class JusonSerializableTests {
 
         let result = input.jusonSerialize()
 
-        @Expect(result.jusonSerialize(), expectedOutput.jusonSerialize())
+        @Expect(result.jusonSerialize().toJsonString(), expectedOutput.jusonSerialize().toJsonString())
     }
     @TestCase[v in random()]
     func castBoolTest(v: Bool) {
@@ -21,14 +21,14 @@ protected class JusonSerializableTests {
 
         let resultTrue = inputTrue.jusonSerialize()
 
-        @Expect(resultTrue.jusonSerialize(), expectedOutputTrue.jusonSerialize())
+        @Expect(resultTrue.jusonSerialize().toJsonString(), expectedOutputTrue.jusonSerialize().toJsonString())
 
         let inputFalse = false
         let expectedOutputFalse = JsonBool(false)
 
         let resultFalse = inputFalse.jusonSerialize()
 
-        @Expect(resultFalse.jusonSerialize(), expectedOutputFalse.jusonSerialize())
+        @Expect(resultFalse.jusonSerialize().toJsonString(), expectedOutputFalse.jusonSerialize().toJsonString())
     }
 
     @TestCase[v in random()]
@@ -38,7 +38,7 @@ protected class JusonSerializableTests {
 
         let result = input.jusonSerialize()
 
-        @Expect(result.jusonSerialize(), expectedOutput.jusonSerialize())
+        @Expect(result.jusonSerialize().toJsonString(), expectedOutput.jusonSerialize().toJsonString())
     }
     @TestCase[v in random()]
     func castStringTest(v: String) {
@@ -47,7 +47,7 @@ protected class JusonSerializableTests {
 
         let result = input.jusonSerialize()
 
-        @Expect(result.jusonSerialize(), expectedOutput.jusonSerialize())
+        @Expect(result.jusonSerialize().toJsonString(), expectedOutput.jusonSerialize().toJsonString())
     }
     @TestCase[v in random()]
     func castArrayTest(v: Array<Int64>) {
@@ -57,7 +57,7 @@ protected class JusonSerializableTests {
 
         let result = input.jusonSerialize()
 
-        @Expect(result.jusonSerialize(), expectedOutput.jusonSerialize())
+        @Expect(result.jusonSerialize().toJsonString(), expectedOutput.jusonSerialize().toJsonString())
     }
     @TestCase[v in random()]
     func castArrayListTest(v: ArrayList<Float64>) {
@@ -67,7 +67,7 @@ protected class JusonSerializableTests {
 
         let result = inputList.jusonSerialize()
 
-        @Expect(result.jusonSerialize(), expectedOutput.jusonSerialize())
+        @Expect(result.jusonSerialize().toJsonString(), expectedOutput.jusonSerialize().toJsonString())
     }
     @TestCase[v in random()]
     func castHashMapTest(v: HashMap<String, Int64>) {
@@ -78,7 +78,7 @@ protected class JusonSerializableTests {
 
         let result = input.jusonSerialize()
 
-        @Expect(result.jusonSerialize(), expectedOutput.jusonSerialize())
+        @Expect(result.jusonSerialize().toJsonString(), expectedOutput.jusonSerialize().toJsonString())
     }
     @TestCase[v in random()]
     func castOptionTest(v: Option<Int64>) {
@@ -91,30 +91,30 @@ protected class JusonSerializableTests {
 
         let resultSome = input.jusonSerialize()
 
-        @Expect(resultSome.jusonSerialize(), expectedOutputSome.jusonSerialize())
+        @Expect(resultSome.jusonSerialize().toJsonString(), expectedOutputSome.jusonSerialize().toJsonString())
     }
 
     @TestCase[v1 in random(), v2 in random(), v3 in random(), v4 in random(),]
     func castJsonValueTest(v1: Bool, v2: Float64, v3: Int64, v4: String) {
         let expectedOutput1 = JsonBool(v1)
         let result1 = expectedOutput1.jusonSerialize()
-        @Expect(result1.jusonSerialize(), expectedOutput1.jusonSerialize())
+        @Expect(result1.jusonSerialize().toJsonString(), expectedOutput1.jusonSerialize().toJsonString())
         
         let expectedOutput2 = JsonFloat(v2)
         let result2 = expectedOutput2.jusonSerialize()
-        @Expect(result2.jusonSerialize(), expectedOutput2.jusonSerialize())
+        @Expect(result2.jusonSerialize().toJsonString(), expectedOutput2.jusonSerialize().toJsonString())
 
         let expectedOutput3 = JsonInt(v3)
         let result3 = expectedOutput3.jusonSerialize()
-        @Expect(result3.jusonSerialize(), expectedOutput3.jusonSerialize())
+        @Expect(result3.jusonSerialize().toJsonString(), expectedOutput3.jusonSerialize().toJsonString())
 
         let expectedOutput4 = JsonString(v4)
         let result4 = expectedOutput4.jusonSerialize()
-        @Expect(result4.jusonSerialize(), expectedOutput4.jusonSerialize())
+        @Expect(result4.jusonSerialize().toJsonString(), expectedOutput4.jusonSerialize().toJsonString())
 
         let expectedOutput5 = JsonArray([expectedOutput1, expectedOutput2])
         let result5 = expectedOutput5.jusonSerialize()
-        @Expect(result5.jusonSerialize(), expectedOutput5.jusonSerialize())
+        @Expect(result5.jusonSerialize().toJsonString(), expectedOutput5.jusonSerialize().toJsonString())
 
         let expectedOutput6 = JsonObject()
         expectedOutput6.put("bool", expectedOutput1)
@@ -123,6 +123,6 @@ protected class JusonSerializableTests {
         expectedOutput6.put("string", expectedOutput4)
         expectedOutput6.put("array", expectedOutput5)
         let result6 = expectedOutput6.jusonSerialize()
-        @Expect(result6.jusonSerialize(), expectedOutput6.jusonSerialize())
+        @Expect(result6.jusonSerialize().toJsonString(), expectedOutput6.jusonSerialize().toJsonString())
     }
 }

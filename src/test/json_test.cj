@@ -234,21 +234,21 @@ public class JsonTests {
         })
         let o3 = JsonObject()
         let o3InnerObject = JsonObject()
-        o3InnerObject.put("name", JsonString("inner object"))
-        o3InnerObject.put("num", JsonInt(0))
+        o3InnerObject.put("name", JsonString("jsodfns"))
+        o3InnerObject.put("num", JsonInt(-5 * -18))
         o3.put("json1", o3InnerObject)
-        o3.put("json2", JsonArray([JsonString("inner array"), JsonInt(1)]))
+        o3.put("json2", JsonArray([JsonString("jsodfns"), JsonFloat(3.5 * -1.9)]))
 
         @Expect(o3.toJsonString(), j3.toJsonString())
 
         let j4 = @Json({
             "json1": @Json({
-                "name": "inner object",
-                "num": 0
+                "name": "jsodfns",
+                "num": -5 * -18
             }),
             "json2": @Json([
-                "inner array",
-                1
+                "jsodfns",
+                3.5 * -1.9
             ])
         })
         @Expect(o3.toJsonString(), j4.toJsonString())
