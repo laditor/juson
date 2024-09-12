@@ -86,6 +86,10 @@ main(): Int64 {
 ```
 更多示例请参考[示例文档](./docs/samples.md)。
 
+## API文档
+
+请参考[API文档](./docs/api.md)。
+
 ## 安装
 将下面内容放在`cjpm.toml`的`[dependencies]`下
 选**一种**你喜欢的就行
