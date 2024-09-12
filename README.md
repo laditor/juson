@@ -73,7 +73,7 @@ main(): Int64 {
     println(user.jusonSerialize().toJsonString()) // 序列化为JsonValue并输出为JSON字符串
 
     let json = @Json({
-        "name": "Bob",
+        "username": "Bob",
         "age": 30,
     })
     let user2 = User.jusonDeserialize(json) // 反序列化为User对象
