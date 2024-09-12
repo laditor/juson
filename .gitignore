@@ -3,6 +3,5 @@
 /cov_output
 .cache
 .vscode
-cjpm.lock
 *.gcno
 *.gcda
