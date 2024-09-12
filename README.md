@@ -1,129 +1,98 @@
-# juson
+# Juson
 
-### @Juson
-用`@Juson`自动序列化/反序列化`class`/`struct`
+Juson 是一个高效且灵活的 JSON 序列化和反序列化库，旨在简化与 JSON 数据的交互。通过自动生成序列化和反序列化的方法，Juson 提供了便捷的 API，使得开发者能够快速地将对象转换为 JSON 以及将 JSON 转换为对象。
 
-### @Json
-用Json宏生成JsonValue
-- 在Json中使用**变量**和**表达式**
-- 尾随逗号支持
-### @Field
-为`@Juson`类/结构体中成员变量设置属性
-- `name`：指定Json中的字段名，默认使用成员变量名
-- `default`：指定默认值，反序列化时若Json中无该字段则使用默认值
-- `required`：指定反序列化时是否必须存在该字段，默认`false`
-    - `true`：反序列化时若Json中无该字段则抛出异常
-    - `false`：反序列化时Json可以没有该字段
-- `skip`：指定字段跳过序列化或反序列化
-  - `all`：跳过所有序列化和反序列化
-  - `serializing`：跳过序列化
-  - `deserializing`：跳过反序列化
+## 功能特点
 
-### import
+### 自动生成序列化/反序列化方法
+
+使用 `@Juson`宏，可以自动为类和结构体生成 `jusonSerialize` 和 `jusonDeserialize` 方法，极大地减少了手动编写代码的工作量。
+
 ```cj
-import juson.*
+@Juson
+class Person {
+    @Field(name="name")
+    var name: String
+    @Field(default=0)
+    var age: Int
+}
 ```
-上面的`import`相当于导入如下内容
+
+### 属性灵活配置
+
+`@Field` 注解允许开发者为字段配置不同的属性，如指定 JSON 中的键名、默认值以及字段的跳过行为（如序列化时跳过、反序列化时跳过等），提供了灵活的使用场景。
+
 ```cj
-import std.collection.HashMap
-import encoding.json.{JsonValue, JsonBool, JsonInt, JsonFloat, JsonString, JsonArray, JsonObject, JsonNull}
-import juson.core.{JusonSerializable, JusonDeserializable}
+@Field(name="user_age", default=18, skip=serializing)
+var age: Int
 ```
-### 导入项目
-将下面内容放在`cjpm.toml`的`[dependencies]`下<br>选**一种**你喜欢的就行
+
+### 灵活的 JSON 表达式支持
+
+使用 `@Json` 注解，开发者可以在代码中直接编写 JSON 表达式，并将其转换为 `JsonValue`。支持嵌入变量和表达式，多种数据类型，包括字符串、数值、数组(`Array`/`ArrayList`)和字典(`TreeMap`/`HashMap`)等都可以转换为 `JsonValue`。
+
+```cj
+let json = @Json({
+    "name": "Alice",
+    "age": 30,
+    "skills": ["programming", "design"]
+})
+```
+
+### 接口扩展支持
+
+Juson 通过 `JusonSerializable` 和 `JusonDeserializable` 接口支持对象的序列化和反序列化。开发者可以通过扩展这些接口，轻松为自定义类型添加序列化和反序列化能力。
+
+```cj
+extend MyType <: JusonSerializable {
+    public func jusonSerialize(): JsonValue {
+        // 自定义序列化逻辑
+    }
+}
+```
+
+### 内置类型支持
+
+Juson 内置对多种基本类型的支持，包括整数、浮点数、布尔值、字符串等，确保开发者可以轻松地将这些类型与 JSON 进行交互。
+
+## 使用示例
+
+以下是一个简单的使用示例，展示如何定义一个类并通过 Juson 库进行序列化和反序列化：
+
+```cj
+@Juson
+class User { // 也可以定义一个struct
+    @Field[name="username"]
+    let name: String
+    @Field[default=0]
+    let age: Int
+}
+
+main(): Int64 {
+    let user = User(name: "Alice", age: 20)
+    println(user.jusonSerialize().toJsonString()) // 序列化为JsonValue并输出为JSON字符串
+
+    let json = @Json({
+        "name": "Bob",
+        "age": 30,
+    })
+    let user2 = User.jusonDeserialize(json) // 反序列化为User对象
+    println(user2.name)
+    println(user2.age)
+    return 0
+}
+```
+更多示例请参考[示例文档](./docs/samples.md)。
+
+## 安装
+将下面内容放在`cjpm.toml`的`[dependencies]`下
+选**一种**你喜欢的就行
 ```
 [dependencies.juson]
   git = "https://gitcode.com/Dacec/juson"
-  branch = "feature/json-serializable"
+  branch = "main"
   output-type = "static"
 ```
 ```
-juson = { git = "https://gitcode.com/Dacec/juson", branch = "feature/json-serializable", output-type = "static"}
-```
-
-### @Juson案例
-```cj
-import juson.*
-
-@Juson
-class Address {
-    @Field[skip=deserializing]
-    var street: String = ""
-
-    var city: String = ""
-}
- 
-@Juson 
-struct User {
-    @Field[name="username", default="unknown"]
-    var name: String = "" 
-
-    @Field[required=true]
-    var age: Int64 = 0
-
-    @Field[skip=serializing]
-    var email: String = ""
-
-    @Field[name="住址"]
-    var address: Address = Address()
-}
- 
-
-main(): Int64 {
-    var user1 = User()
-    user1.name = "Joana"
-    user1.age = 23
-    user1.email = "joana@xxx.com"
-    user1.address.street = "456 Elm St"
-    user1.address.city = "San Francisco"
-    println(user1.jusonSerialize().toJsonString())
-
-    let j = @Json({
-        // "username": "Joana",
-        "age": 23,
-        "email": "joana@xxx.com",
-        "住址": {
-            "street": "456 Elm St",
-            "city": "San Francisco", 
-        },
-    })
-    let user2 = User.jusonDeserialize(j)
-    println("User2.name: ${user2.name}")
-    println("User2.age: ${user2.age}")
-    println("User2.email: ${user2.email}")
-    println("User2.address.street: ${user2.address.street}")
-    println("User2.address.city: ${user2.address.city}")
-    0
-}
-```
-### @Json案例
-```cj
-import std.collection.{map, collectArray}
-import juson.*
-
-main(): Int64 {
-    let key1 = "key"
-    let ofStr = {s: String => "[${s}]"}
-    let numStr = "1, 2, 5, 12, 9, 4, 3.5"
-    let info = HashMap<String, ToJsonValue>([
-        ("name", "Fiona"),
-        ("age", 40)
-    ])
-    
-    let a = @Json(
-        {
-            "calculation": 1.0 + 2.0,  // 简单的数学表达式
-            "repeated": "bbb" * 3,  // 字符串操作
-            ofStr("ccc"): ofStr("ccc"),  // 函数表达式调用
-            "key_transformed": numStr.split(",") |>
-                map {i => i.trimAscii() + "g"} |> collectArray,  // 动态数组生成
-            key1: "Dynamic key with a value",
-            "null_value": null,  // null 值
-            "infos": [info],  // 使用map动态生成对象
-        }
-    )
-
-    println(a.toJsonString())
-    return 0
-}
+juson = { git = "https://gitcode.com/Dacec/juson", branch = "main", output-type = "static"}
 ```
