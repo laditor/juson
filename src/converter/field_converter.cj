@@ -43,24 +43,15 @@ func processField(attr: AssignExpr): Unit {
                     "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
                 throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }
-    } else if (name == "required") {
-        match (attr.rightExpr) {
-            case l: LitConstExpr where l.literal.kind == BOOL_LITERAL => setItem("required", l.toTokens())
-            case _ => 
-                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
-                    'Expect "true" or "false", found \"${attr.rightExpr.toTokens()}\"',
-                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
-                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
-        }
     } else if (name == "default") {
         setItem("default", attr.rightExpr.toTokens())
     } else if (name == "skip") {
         match (attr.rightExpr) {
             case r: RefExpr where r.identifier.value == "all" || r.identifier.value == "serializing" ||
-                r.identifier.value == "deserializing" => setItem("skip", r.toTokens())
+                r.identifier.value == "deserializing" || r.identifier.value == "none" => setItem("skip", r.toTokens())
             case _ =>
                 diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
-                    'Expect "all", "serializing" or "deserializing", found "${attr.rightExpr.toTokens()}"',
+                    'Expect "none", "all", "serializing" or "deserializing", found "${attr.rightExpr.toTokens()}"',
                     "Invalid attribute value \"${attr.rightExpr.toTokens()}\"") 
                 throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }

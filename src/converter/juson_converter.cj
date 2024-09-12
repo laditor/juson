@@ -111,6 +111,11 @@ func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tok
 
 // jusonSerialize中字段的序列化Tokens
 func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tokens {
+    let declType = match (varDecl.declType) {
+        case p: PrefixType where p.prefixOps.size == 1 && p.prefixOps[0].kind == QUEST => p.baseType
+        case r: RefType where r.identifier.value == "Option" => r.typeArguments[0]
+        case _ => varDecl.declType
+    }
     let map = match (attrs) {
         case Some(a) =>
             checkDeserAttrConflict(varDecl, a)
@@ -118,7 +123,7 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
         case None => 
             let exceptionStr = "Missing field \"${varDecl.identifier.value}\""
             return quote($(varDecl.identifier): match (jsonObject.get($(varDecl.identifier.value))) {
-                case Some(v) => $(varDecl.declType).jusonDeserialize(v)
+                case Some(v) => $(declType).jusonDeserialize(v)
                 case None => throw DeserializationException($(exceptionStr))
             })
     }
@@ -132,13 +137,13 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
     match (map.get("default")) {
         case Some(d) =>
             quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
-                case Some(v) => $(varDecl.declType).jusonDeserialize(v)
+                case Some(v) => $(declType).jusonDeserialize(v)
                 case None => $d
             })
         case None =>
             let exceptionStr = "Missing field \"${varName}\""
             quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
-                case Some(v) => $(varDecl.declType).jusonDeserialize(v)
+                case Some(v) => $(declType).jusonDeserialize(v)
                 case None => throw DeserializationException($(exceptionStr))
             })
     }

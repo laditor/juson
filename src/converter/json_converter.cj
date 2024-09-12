@@ -218,8 +218,8 @@ func peekExprBeforeColon(input: Tokens, pos: Int64): Option<(Tokens, Int64)> {
         None
     } else {
         try {
-            let tks = parseExpr(input[pos..p]).toTokens()
-            (tks, p)
+            let (expr, nextIndex) = parseExprFragment(input[pos..p])
+            (expr.toTokens(), (pos + nextIndex))
         } catch (e: ParseASTException) {
             None
         }
