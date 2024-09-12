@@ -1,6 +1,7 @@
 /target
 /output
 /cov_output
+/build-script-cache
 .cache
 .vscode
 *.gcno
