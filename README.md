@@ -55,6 +55,13 @@ extend MyType <: JusonSerializable {
 
 Juson 内置对多种基本类型的支持，包括整数、浮点数、布尔值、字符串等，确保开发者可以轻松地将这些类型与 JSON 进行交互。
 
+### Option 类型处理
+Juson 利用 `Option` 类型处理空值。`None`对应 JSON 中的 `null`，`Some`对应 JSON 中的非 `null` 值。
+
+在序列化时，`Some`值会序列化为对应类型的 JSON 值，`None`值则序列化为 `null`。
+
+在反序列化时，`null`值会转换为 `None`，非 `null`值会转换为 `Some`。
+
 ## 使用示例
 
 以下是一个简单的使用示例，展示如何定义一个类并通过 Juson 库进行序列化和反序列化：
