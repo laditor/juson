@@ -58,9 +58,9 @@ Juson 内置对[多种类型](./docs/api.md#extend-jusonserializable)的支持�
 ### Option 类型处理
 Juson 利用 `Option` 类型处理空值。`None`对应 JSON 中的 `null`，`Some`对应 JSON 中的非 `null` 值。
 
-在序列化时，`Some`值会序列化为对应类型的 JSON 值，`None`值则序列化为 `null`。
+在序列化时，`Some`值会序列化为对应类型的 JSON 值，`None`值则序列化为 `null`。当class/struct中的某个字段是Option类型时，序列化时，如果不在构造器中赋值，则自动赋值为`None`，序列化为`null`。
 
-在反序列化时，`null`值会转换为 `None`，非 `null`值会转换为 `Some`。
+在反序列化时，`null`值会转换为 `None`，非 `null`值会转换为 `Some`。反序列化过程不对`Option`字段做默认处理，想要默认为`None`，需要在`@Field`中指定`default=None`。
 
 ## 使用示例
 
