@@ -6,12 +6,13 @@ import encoding.json.JsonInt
 
 protected enum JsonSerializableFunc {
     | JusonSerialize
-    | JusonDeserialize
+    | JusonDeserializeJsonValue
+    | JusonDeserializeString
 }
 
 protected func jusonConverter(input: Tokens): Tokens {
     try {
-        match (parseDecl(input)) {
+        match (parseDecl(input)) { // cjlint-ignore !G.EXP.01
             case v: ClassDecl => jusonClass(v)
             case v: StructDecl => jusonStruct(v)
             case anyone =>
@@ -41,6 +42,7 @@ func jusonStruct(clazz: StructDecl): Tokens {
     clazz.toTokens()
 }
 
+// cjlint-ignore -start !G.FUN.01
 func jusonBody(body: Body, clazzId: Token): Unit {
     let (varDecls, varAttrMap, hasFuncs) = collectVarAttrsHasFuncs(body)
     checkVarNameConflict(varDecls, varAttrMap)
@@ -62,7 +64,7 @@ func jusonBody(body: Body, clazzId: Token): Unit {
         )
         ))
     }
-    // deserialize
+    // deserializeJsonValue
     if (!hasFuncs[1]) {
         let paramsOpt = varDecls |> map {
             v => jusonDeserializeField(v, varAttrMap.get(v.identifier.value))
@@ -89,9 +91,21 @@ func jusonBody(body: Body, clazzId: Token): Unit {
         )
         ))
     }
+    // deserializeString
+    if (!hasFuncs[2]) {
+        body.decls.append(
+            FuncDecl(
+            quote(
+            public static func jusonDeserialize(jsonString: String): $clazzId {
+                $clazzId.jusonDeserialize(JsonValue.fromStr(jsonString))
+            }
+        )
+        ))
+    }
     // 全参数构造函数
     body.decls.append(allNamedArgCtor(varDecls, varAttrMap))
 }
+// cjlint-ignore -end
 
 // jusonSerialize中字段的序列化Tokens
 func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tokens {
@@ -202,7 +216,8 @@ func checkDeserAttrConflict(varDecl: VarDecl, attrs: HashMap<String, Tokens>): U
 // hasFuncs: 0-serialize, 1-deserialize
 func collectVarAttrsHasFuncs(body: Body): (Array<VarDecl>, HashMap<String, HashMap<String, Tokens>>, Array<Bool>) {
     let varDecls = ArrayList<VarDecl>() // 收集var变量
-    let hasFuncs = Array<Bool>(2, repeat: false) //判断是否已存在相关函数，[0]-serialize, [1]-deserialize
+    //判断是否已存在相关函数，[0]-serialize, [1]-deserializeJsonValue, [2]-deserializeString
+    let hasFuncs = Array<Bool>(3, repeat: false) 
     let varAttrMap = HashMap<String, HashMap<String, Tokens>>() // 收集var的属性
     var declT: Decl = VarDecl() // 记录声明用于报错
 
@@ -228,7 +243,8 @@ func collectVarAttrsHasFuncs(body: Body): (Array<VarDecl>, HashMap<String, HashM
 
                 case v: FuncDecl => match (judgeFunc(v)) {
                     case Some(JusonSerialize) => hasFuncs[0] = true
-                    case Some(JusonDeserialize) => hasFuncs[1] = true
+                    case Some(JusonDeserializeJsonValue) => hasFuncs[1] = true
+                    case Some(JusonDeserializeString) => hasFuncs[2] = true
                     case None => ()
                 }
                 case _ => ()
@@ -255,7 +271,9 @@ func judgeFunc(funcDecl: FuncDecl): Option<JsonSerializableFunc> {
             case "deserialize" =>
                 let paramType = (funcDecl.funcParams[0].paramType as RefType).getOrThrow()
                 if (funcDecl.funcParams.size == 1 && paramType.identifier.value == "DataModel") {
-                    JusonDeserialize
+                    JusonDeserializeJsonValue
+                } else if (funcDecl.funcParams.size == 1 && paramType.identifier.value == "String") {
+                    JusonDeserializeString
                 } else {
                     None
                 }
