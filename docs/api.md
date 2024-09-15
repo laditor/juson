@@ -1,11 +1,11 @@
-### Macros
-##### @Juson
+## Macros
+#### @Juson
 ```cj
 public macro Juson(input: Tokens): Tokens
 ```
 修饰`class`或`struct`，为其自动生成`jusonSerialize`方法和`jusonDeserialize`方法，提供序列化和反序列化的能力。
 
-##### @Field
+#### @Field
 ```cj
 public macro Field(attrs: Tokens, input: Tokens): Tokens
 ```
@@ -35,7 +35,7 @@ var myVar2: Int64
 @Field(skip=all)
 var myVar3: Int64
 ```
-##### @Json
+#### @Json
 ```
 public macro Json(input: Tokens): Tokens
 ```
@@ -66,7 +66,7 @@ let a = @Json(
 )
 ```
 
-### Interfaces & Extensions
+## Interfaces & Extensions
 ***
 #### public interface JusonSerializable
 ```
@@ -374,3 +374,19 @@ public static func jusonDeserialize(jsonValue: JsonValue): TreeMap<String, T>
 public static func jusonDeserialize(jsonValue: JsonValue): Option<T>
 ```
 将 `JsonValue` 转换成 `Option<T>`，在 `JsonNull` 情况下返回 `None`。
+
+#### public interface JsonObjectExtension
+用来重载`JsonObject`的`[]`运算符
+
+#### extend JsonObjectExtension
+
+##### extend JsonObject <: JsonObjectExtension
+```
+operator func [](key: String, value!: JusonSerializable)
+```
+示例：
+```
+let obj = JsonObject()
+obj["key"] = "value"
+```
+通过`[]`运算符，将继承[`JusonSerializable`](api.md#public-interface-jusonserializable)接口的对象添加到`JsonObject`中。
