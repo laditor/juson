@@ -64,16 +64,18 @@ main(): Int64 {
     println("序列化后的JSON: ${jsonStr}")  // cache字段不会出现在输出的JSON中
 
     // 反序列化：从JSON恢复为对象
-    let json = @Json({
+    let json = """
+    {
         "orderId": 10002,
         "status": "已发货",
-        "createdAt": "2023-09-01", // 尝试修改创建时间
+        "createdAt": "2023-09-01",
         "cache": "外部缓存数据",
         "商品列表": [
             { "商品名称": "平板电脑", "price": 4999.99, "category": "电子产品" },
             { "商品名称": "充电器", "price": 99.99, "category": "配件" }
         ]
-    })
+    }
+"""
 
     let newOrder = Order.jusonDeserialize(json)
     println("反序列化后的订单ID: ${newOrder.orderId}")
