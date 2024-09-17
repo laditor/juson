@@ -10,7 +10,7 @@ public func parseCommaSeparatedAttrs(attrs: Tokens): Array<AssignExpr> {
     while (true) {
         try {
             let (expr, nextIndex) = parseExprFragment(attrs, startFrom: index) // throws ParseASTException
-            match (expr) {
+            match (expr) { // cjlint-ignore !G.EXP.01
                 case a: AssignExpr where a.leftExpr.toTokens().size == 1 => exprs.append(
                     a)
                 case e =>

@@ -39,7 +39,7 @@ func processField(attr: AssignExpr): Unit {
             case l: LitConstExpr where l.literal.kind == STRING_LITERAL => setItem("name", l.toTokens())
             case _ => 
                 diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
-                    'Expect a string literal, found \"${attr.rightExpr.toTokens()}\"',
+                    'Expect a string literal, found "${attr.rightExpr.toTokens()}"',
                     "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
                 throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }
@@ -49,10 +49,29 @@ func processField(attr: AssignExpr): Unit {
         match (attr.rightExpr) {
             case r: RefExpr where r.identifier.value == "all" || r.identifier.value == "serializing" ||
                 r.identifier.value == "deserializing" || r.identifier.value == "none" => setItem("skip", r.toTokens())
+            case t: TrailingClosureExpr =>
+                match (t.expr) {
+                    case r: RefExpr where r.identifier.value == "serializing" || r.identifier.value == "deserializing" => 
+                        setItem("skip", t.toTokens())
+                    case _ =>
+                        diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                            'Expect "serializing" or "deserializing" with trailing lambda, found "${attr.rightExpr.toTokens()}"',
+                            "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+                        throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+                }
             case _ =>
                 diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
                     'Expect "none", "all", "serializing" or "deserializing", found "${attr.rightExpr.toTokens()}"',
                     "Invalid attribute value \"${attr.rightExpr.toTokens()}\"") 
+                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+        }
+    } else if (name == "format") {
+        match (attr.rightExpr) {
+            case l: LitConstExpr where l.literal.kind == STRING_LITERAL => setItem("format", l.toTokens())
+            case _ => 
+                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                    'Expect a string literal, found "${attr.rightExpr.toTokens()}"',
+                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
                 throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }
     } else {

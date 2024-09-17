@@ -1,6 +1,6 @@
 protected package juson.converter
 
-import juson.converter.helper.allNamedArgCtor
+import juson.converter.helper.{allNamedArgCtor, isOptionType}
 import juson.exception.DeserializationException
 import encoding.json.JsonInt
 
@@ -117,14 +117,18 @@ func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tok
     if (map.get("skip")?[0].value == "all" || map.get("skip")?[0].value == "serializing") {
         return quote()
     }
-
     // 处理name属性
     let varName = map.get("name")?[0].value ?? varDecl.identifier.value
-    quote(($(varName), $(varDecl.identifier).jusonSerialize()))
+    // 处理format属性
+    let jusonSer = match (map.get("format")) {
+        case Some(f) => quote($(varDecl.identifier).jusonSerialize($f))
+        case None => quote($(varDecl.identifier).jusonSerialize())
+    }
+    quote(($(varName), $jusonSer))
 }
 
 // jusonSerialize中字段的序列化Tokens
-func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tokens {
+func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tokens { // cjlint-ignore !G.FUN.01
     let declType = match (varDecl.declType) {
         case p: PrefixType where p.prefixOps.size == 1 && p.prefixOps[0].kind == QUEST => p.baseType
         case r: RefType where r.identifier.value == "Option" => r.typeArguments[0]
@@ -141,25 +145,43 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
                 case None => throw DeserializationException($(exceptionStr))
             })
     }
-    // 处理skip属性
-    if (map.get("skip")?[0].value == "all" || map.get("skip")?[0].value == "deserializing") {
-        return quote()
-    }
     // 处理name属性
     let varName = map.get("name")?[0].value ?? varDecl.identifier.value
-    // 处理default属性
-    match (map.get("default")) {
-        case Some(d) =>
-            quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
-                case Some(v) => $(declType).jusonDeserialize(v)
-                case None => $d
-            })
-        case None =>
-            let exceptionStr = "Missing field \"${varName}\""
-            quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
-                case Some(v) => $(declType).jusonDeserialize(v)
-                case None => throw DeserializationException($(exceptionStr))
-            })
+    // 处理format属性
+    let jusonDeser = match (map.get("format")) {
+        case Some(f) => quote($(declType).jusonDeserialize(v, $(f)))
+        case None => quote($(declType).jusonDeserialize(v))
+    }
+    // 处理skip属性(skip=all/deserializing时，已经确保了存在default属性)
+    match (map.get("skip")?[0].value) {
+        case Some("all") | Some("deserializing") =>
+            let default = map["default"]
+            if (map["skip"].size == 1) { // 仅跳过
+                quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
+                    case Some(v) => $jusonDeser
+                    case None => $default
+                })
+            } else { // 条件跳过
+                let lambda = map["skip"][1..]
+                quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
+                    case Some(v) where !$(lambda)(varDecl.identifier) => $jusonDeser
+                    case None => $default
+                })
+            }
+        case Some(_) | None =>
+            match (map.get("default")) {
+                case Some(d) =>
+                    quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
+                        case Some(v) => $jusonDeser
+                        case None => $(d)
+                    })
+                case None =>
+                    let exceptionStr = "Missing field \"${varName}\" and no default value"
+                    quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
+                        case Some(v) => $jusonDeser
+                        case None => throw DeserializationException($(exceptionStr))
+                    })
+            }
     }
 }
 
@@ -196,20 +218,25 @@ func checkVarNameConflict(varDecls: Array<VarDecl>, varAttrMap: HashMap<String, 
 // 检查反序列化过程属性冲突
 func checkDeserAttrConflict(varDecl: VarDecl, attrs: HashMap<String, Tokens>): Unit {
     let _ = varDecl
-    let conflict = {
-        kv1: String, kv2: String =>
-        diagReport(DiagReportLevel.ERROR, varDecl.toTokens(), "Conflicting attributes: \"${kv1}\" and \"${kv2}\"",
-            "Conflicting attributes: \"${kv1}\" and \"${kv2}\"")
-        throw ASTException("Conflicting attributes: \"${kv1}\" and \"${kv2}\"")
+    let typeStr = varDecl.declType.toTokens()[0].value
+    let conflictReports = ArrayList<() -> Unit>()
+    if (!isOptionType(varDecl) && (attrs.get("skip")?[0].value == "all" || attrs.get("skip")?[0].value == "deserializing") && attrs.get("default").isNone()) {
+        conflictReports.append({ =>
+            diagReport(DiagReportLevel.ERROR, varDecl.toTokens(), "Cannot skip deserializing non-Option field without default value",
+                "Cannot skip deserializing non-Option field without default value")
+        })
     }
-    if (attrs.get("required")?[0].value == "true" && attrs.get("skip")?[0].value == "all") { // required和skip=all冲突
-        conflict("required=true", "skip=all")
+    if (typeStr != "DateTime" && attrs.get("format").isSome()) {
+        conflictReports.append({ =>
+            diagReport(DiagReportLevel.ERROR, varDecl.toTokens(), "Cannot specify format for non-DateTime field",
+                "Cannot specify format for non-DateTime field")
+        })
     }
-    if (attrs.get("required")?[0].value == "true" && attrs.get("skip")?[0].value == "deserializing") { // required和skip=deserializing冲突
-        conflict("required=true", "skip=deserializing")
-    }
-    if (attrs.get("required")?[0].value == "true" && attrs.contains("default")) { // required和default冲突
-        conflict("required=true", "default")
+    if (conflictReports.size > 0) {
+        for (report in conflictReports) {
+            report()
+        }
+        throw ASTException("Conflicting attributes")
     }
 }
 
