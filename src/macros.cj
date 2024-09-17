@@ -2,7 +2,7 @@ macro package juson
 
 import std.ast.*
 import juson.converter.{jsonConverter, jusonConverter, fieldConvertor}
-public import std.collection.{collectHashMap}
+public import std.collection.{filter, collectHashMap}
 public import encoding.json.{JsonValue, JsonBool, JsonInt, JsonFloat, JsonString, JsonArray, JsonObject, JsonNull}
 public import juson.core.{JusonSerializable, JusonDeserializable, JsonObjectExtension}
 public import juson.exception.{SerializationException, DeserializationException}

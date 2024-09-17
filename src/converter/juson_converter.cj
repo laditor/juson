@@ -59,7 +59,7 @@ func jusonBody(body: Body, clazzId: Token): Unit {
             public func jusonSerialize(): JsonObject {
                 JsonObject([
                     $(pairsOpt ?? Tokens())
-                ] |> collectHashMap<String, JsonValue>)
+                ] |> filter { kv => kv[0] != "" } |> collectHashMap<String, JsonValue>)
             }
         )
         ))
@@ -113,12 +113,19 @@ func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tok
         case Some(a) => a
         case None => return quote(($(varDecl.identifier.value), $(varDecl.identifier).jusonSerialize()))
     }
-    // 处理skip属性
-    if (map.get("skip")?[0].value == "all" || map.get("skip")?[0].value == "serializing") {
-        return quote()
-    }
     // 处理name属性
-    let varName = map.get("name")?[0].value ?? varDecl.identifier.value
+    var varName = Token(STRING_LITERAL, map.get("name")?[0].value ?? varDecl.identifier.value).toTokens()
+    // 处理skip属性
+    match (map.get("skip")?[0].value) {
+        case Some("all") | Some("serializing") =>
+            if (map["skip"].size == 1) { // 仅跳过
+                return Tokens()
+            } else { // 条件跳过
+                let lambda = map["skip"][1..]
+                varName = quote(if ($(lambda)($(varDecl.identifier))) {""} else {$(varName)})
+            }
+        case Some(_) | None => ()
+    }
     // 处理format属性
     let jusonSer = match (map.get("format")) {
         case Some(f) => quote($(varDecl.identifier).jusonSerialize($f))
@@ -164,8 +171,8 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
             } else { // 条件跳过
                 let lambda = map["skip"][1..]
                 quote($(varDecl.identifier): match (jsonObject.get($(varName))) {
-                    case Some(v) where !$(lambda)(varDecl.identifier) => $jusonDeser
-                    case None => $default
+                    case Some(v) where !$(lambda)(v) => $jusonDeser
+                    case Some(_) | None => $default
                 })
             }
         case Some(_) | None =>
