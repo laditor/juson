@@ -1,6 +1,6 @@
 protected package juson.converter
 
-import juson.converter.helper.parseCommaSeparatedAttrs
+import juson.converter.helper.{parseCommaSeparatedAttrs, unwrapType, compareType}
 
 protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
     // 检查，必须是变量声明
@@ -14,15 +14,20 @@ protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
                     "Unsupported declaration")
                 throw ASTException("Unexpected declaration")
         }
+        let _ = varDecl.declType // 确保有类型声明
     } catch (_: ParseASTException) {
         diagReport(DiagReportLevel.ERROR, input, "Expected a variable declaration, found unsupported syntax",
             "Unsupported syntax")
         throw ASTException("Unsupported syntax")
+    } catch (_: ASTException) { // 类型声明缺失
+        diagReport(DiagReportLevel.ERROR, input, "VarDecl must have a type declaration",
+            "VarDecl must have a type declaration")
+        throw ASTException("VarDecl must have a type declaration")
     }
     // 解析属性
     let attrStrs = ArrayList<String>()
     for (attr in parseCommaSeparatedAttrs(attrs)) {
-        processField(attr)
+        processField(varDecl, attr)
         attrStrs.append(attr.leftExpr.toTokens()[0].value)
     }
     setItem("variable-name", varDecl.identifier.value)
@@ -30,8 +35,13 @@ protected func fieldConvertor(attrs: Tokens, input: Tokens): Tokens {
     input
 }
 
+enum State {
+    | Serializing
+    | Deserializing
+}
+
 // 每个属性的处理函数，新增属性时需要在这里添加处理逻辑
-func processField(attr: AssignExpr): Unit {
+func processField(varDecl: VarDecl, attr: AssignExpr): Unit { // cjlint-ignore !G.FUN.01
     let name = attr.leftExpr.toTokens()[0].value
     // 处理属性
     if (name == "name") {
@@ -51,7 +61,11 @@ func processField(attr: AssignExpr): Unit {
                 r.identifier.value == "deserializing" || r.identifier.value == "none" => setItem("skip", r.toTokens())
             case t: TrailingClosureExpr =>
                 match (t.expr) {
-                    case r: RefExpr where r.identifier.value == "serializing" || r.identifier.value == "deserializing" => 
+                    case r: RefExpr where r.identifier.value == "serializing" => 
+                        processConditionSerdeLambda(varDecl, t.lambdaExpr, Serializing)
+                        setItem("skip", t.toTokens())
+                    case r: RefExpr where r.identifier.value == "deserializing" => 
+                        processConditionSerdeLambda(varDecl, t.lambdaExpr, Deserializing)
                         setItem("skip", t.toTokens())
                     case _ =>
                         diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
@@ -78,5 +92,38 @@ func processField(attr: AssignExpr): Unit {
         diagReport(DiagReportLevel.ERROR, attr.leftExpr.toTokens(), "Invalid attribute name \"${name}\"",
             "Invalid attribute name \"${name}\"")
         throw ASTException("Invalid attribute name \"${name}\"")
+    }
+}
+
+func processConditionSerdeLambda(varDecl: VarDecl, lambda: LambdaExpr, state: State): Unit {
+    match (state) {
+        case Serializing =>
+            if (lambda.funcParams.size != 1) {
+                diagReport(DiagReportLevel.ERROR, lambda.toTokens(),
+                    "Expect a lambda with one ${varDecl.declType.toTokens()} parameter, found ${lambda.funcParams.size} parameters",
+                    "Invalid lambda parameters")
+                throw ASTException("Invalid lambda parameters")
+            }
+            if (lambda.funcParams[0].paramType.toTokens().size != 0 && !compareType(varDecl.declType, lambda.funcParams[0].paramType)) {
+                diagReport(DiagReportLevel.ERROR, lambda.toTokens(),
+                    "Expect a lambda with one ${varDecl.declType.toTokens()} parameter, found ${lambda.funcParams[0].paramType.toTokens()}",
+                    "Invalid lambda parameter type")
+                throw ASTException("Invalid lambda parameter type")
+            }
+            lambda.funcParams[0].paramType = varDecl.declType
+        case Deserializing => 
+            if (lambda.funcParams.size != 1) {
+                diagReport(DiagReportLevel.ERROR, lambda.toTokens(),
+                    "Expect a lambda with no parameter, found ${lambda.funcParams.size} parameters",
+                    "Invalid lambda parameters")
+                throw ASTException("Invalid lambda parameters")
+            }
+            if (lambda.funcParams[0].paramType.toTokens().size != 0 && !compareType(lambda.funcParams[0].paramType, RefType(quote(JsonValue)))) {
+                diagReport(DiagReportLevel.ERROR, lambda.toTokens(),
+                    "Expect a lambda with one JsonValue parameter, found ${lambda.funcParams[0].paramType.toTokens()}",
+                    "Invalid lambda parameter type")
+                throw ASTException("Invalid lambda parameter type")
+            }
+            lambda.funcParams[0].paramType = RefType(quote(JsonValue))
     }
 }
