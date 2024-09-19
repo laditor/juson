@@ -62,10 +62,10 @@ func processField(varDecl: VarDecl, attr: AssignExpr): Unit { // cjlint-ignore !
             case t: TrailingClosureExpr =>
                 match (t.expr) {
                     case r: RefExpr where r.identifier.value == "serializing" => 
-                        processConditionSerdeLambda(varDecl, t.lambdaExpr, Serializing)
+                        processConditionalLambda(varDecl, t.lambdaExpr, Serializing)
                         setItem("skip", t.toTokens())
                     case r: RefExpr where r.identifier.value == "deserializing" => 
-                        processConditionSerdeLambda(varDecl, t.lambdaExpr, Deserializing)
+                        processConditionalLambda(varDecl, t.lambdaExpr, Deserializing)
                         setItem("skip", t.toTokens())
                     case _ =>
                         diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
@@ -88,6 +88,24 @@ func processField(varDecl: VarDecl, attr: AssignExpr): Unit { // cjlint-ignore !
                     "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
                 throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
         }
+    } else if (name == "serialize") {
+        match (attr.rightExpr) {
+            case r: RefExpr => setItem("serialize", r.toTokens())
+            case _ => 
+                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                    'Expect a function reference, found "${attr.rightExpr.toTokens()}"',
+                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+        }
+    } else if (name == "deserialize") {
+        match (attr.rightExpr) {
+            case r: RefExpr => setItem("deserialize", r.toTokens())
+            case _ => 
+                diagReport(DiagReportLevel.ERROR, attr.rightExpr.toTokens(),
+                    'Expect a function reference, found "${attr.rightExpr.toTokens()}"',
+                    "Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+                throw ASTException("Invalid attribute value \"${attr.rightExpr.toTokens()}\"")
+        }
     } else {
         diagReport(DiagReportLevel.ERROR, attr.leftExpr.toTokens(), "Invalid attribute name \"${name}\"",
             "Invalid attribute name \"${name}\"")
@@ -95,7 +113,7 @@ func processField(varDecl: VarDecl, attr: AssignExpr): Unit { // cjlint-ignore !
     }
 }
 
-func processConditionSerdeLambda(varDecl: VarDecl, lambda: LambdaExpr, state: State): Unit {
+func processConditionalLambda(varDecl: VarDecl, lambda: LambdaExpr, state: State): Unit {
     match (state) {
         case Serializing =>
             if (lambda.funcParams.size != 1) {

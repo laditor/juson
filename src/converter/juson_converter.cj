@@ -126,10 +126,12 @@ func jusonSerializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): Tok
             }
         case Some(_) | None => ()
     }
-    // 处理format属性
-    let jusonSer = match (map.get("format")) {
-        case Some(f) => quote($(varDecl.identifier).jusonSerialize($f))
-        case None => quote($(varDecl.identifier).jusonSerialize())
+    // 处理serialize属性和处理format属性
+    let jusonSer = match ((map.get("serialize"), map.get("format"))) {
+        case (Some(s), Some(f)) => quote($(s)($(varDecl.identifier), $(f)))
+        case (Some(s), None) => quote($(s)($(varDecl.identifier)))
+        case (None, Some(f)) => quote($(varDecl.identifier).jusonSerialize($(f)))
+        case (None, None) => quote($(varDecl.identifier).jusonSerialize())
     }
     quote(($(varName), $jusonSer))
 }
@@ -154,10 +156,12 @@ func jusonDeserializeField(varDecl: VarDecl, attrs: ?HashMap<String, Tokens>): T
     }
     // 处理name属性
     let varName = map.get("name")?[0].value ?? varDecl.identifier.value
-    // 处理format属性
-    let jusonDeser = match (map.get("format")) {
-        case Some(f) => quote($(declType).jusonDeserialize(v, $(f)))
-        case None => quote($(declType).jusonDeserialize(v))
+    // 处理deserialize属性和format属性
+    let jusonDeser = match ((map.get("deserialize"), map.get("format"))) {
+        case (Some(d), Some(f)) => quote($(d)(v, $(f)))
+        case (Some(d), None) => quote($(d)(v))
+        case (None, Some(f)) => quote($(declType).jusonDeserialize(v, $(f)))
+        case (None, None) => quote($(declType).jusonDeserialize(v))
     }
     // 处理skip属性(skip=all/deserializing时，已经确保了存在default属性)
     match (map.get("skip")?[0].value) {
