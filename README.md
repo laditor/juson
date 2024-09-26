@@ -20,12 +20,19 @@ class Person {
 
 ### 属性灵活配置
 
-`@Field` 宏允许开发者为字段配置[不同的属性](./docs/api.md#field)，如指定 JSON 中的键名、默认值、字段的跳过行为（如序列化时跳过、反序列化时跳过、条件跳过等）以及自定义序列化/反序列化逻辑等，提供了灵活的使用场景。
+通过`@Field`宏，开发者可以为变量声明添加灵活的属性配置。支持的属性包括：
+
+- `name`：指定 JSON 中的键名，默认为变量名。
+- `default`：指定默认值，如果 JSON 中缺少该键，则使用此默认值。
+- `format`：指定格式化字符串，用于格式化日期时间。
+ -`serialize` 和 `deserialize`：允许您定义自定义序列化和反序列化逻辑，以满足特定需求。
+- `skip`：控制字段的序列化和反序列化行为，包括条件跳过，提供极大的灵活性。
 
 ```cj
 @Field[name="user_age", default=18, skip=serializing]
 var age: Int
 ```
+[查看@Field属性详细介绍](./docs/api.md#field)
 
 ### 灵活的 JSON 表达式支持
 
@@ -38,6 +45,7 @@ let json = @Json({
     "skills": ["programming", "design"]
 })
 ```
+[查看@Json详细介绍](./docs/api.md#json)
 
 ### 接口扩展支持
 
@@ -53,7 +61,9 @@ extend MyType <: JusonSerializable {
 
 ### 内置类型支持
 
-Juson 内置对[多种类型](./docs/api.md#extend-jusonserializable)的支持，包括整数、浮点数、布尔值、字符串等，确保开发者可以轻松地将这些类型与 JSON 进行交互。
+Juson 内置对多种类型的支持，包括整数、浮点数、布尔值、字符串等，确保开发者可以轻松地将这些类型与 JSON 进行交互。
+
+[Juson支持哪些类型](./docs/api.md#extend-jusonserializable)
 
 ### Option 类型处理
 Juson 利用 `Option` 类型处理空值。`None`对应 JSON 中的 `null`，`Some`对应 JSON 中的非 `null` 值。
