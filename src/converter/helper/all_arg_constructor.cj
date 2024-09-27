@@ -6,20 +6,25 @@ import std.collection.{HashMap, map, filter, any, reduce, collectHashSet, collec
 // 全参数构造函数，Option类型的成员变量默认值为None
 public func allNamedArgCtor(varDecls: Array<VarDecl>, attrs: HashMap<String, HashMap<String, Tokens>>): FuncDecl {
     let _ = attrs // unused
-    let optionVarNames = varDecls |>
-        filter { i => isOptionType(i) } |> map {i => i.identifier.value} |> collectHashSet
-
-    let paramsOpt = varDecls |> 
+    let optionVarNames = varDecls |> filter {i => isOptionType(i)} |> map {i => i.identifier.value} |> collectHashSet
+    let defaultVarNames = varDecls |> filter {i: VarDecl => attrs.get(i.identifier.value)?.contains("default") == true} |>
+        map {i => i.identifier.value} |> collectHashSet
+        
+    let paramsOpt = varDecls |>
         map {
-        i => if (optionVarNames.contains(i.identifier.value)) {
-            quote($(i.identifier)!: $(i.declType) = None)
+        i => 
+        let eqDefault = if (optionVarNames.contains(i.identifier.value)) {
+            quote(= None)
+        } else if (defaultVarNames.contains(i.identifier.value)){
+            quote(= $(attrs[i.identifier.value]["default"]))
         } else {
-            quote($(i.identifier)!: $(i.declType))
+            Tokens()
         }
+        quote($(i.identifier)!: $(i.declType) $(eqDefault))
     } |> reduce {acc, i => acc + Token(COMMA) + i}
 
-    let assignsOpt = varDecls |>
-        map {i => quote(this.$(i.identifier) = $(i.identifier))} |> reduce {acc, i => acc + Token(NL) + i}
+    let assignsOpt = varDecls |> map {i => quote(this.$(i.identifier) = $(i.identifier))} |>
+        reduce {acc, i => acc + Token(NL) + i}
 
     FuncDecl(
         quote(
