@@ -57,9 +57,10 @@ func jusonBody(body: Body, clazzId: Token): Unit {
             FuncDecl(
             quote(
             public func jusonSerialize(): JsonObject {
-                JsonObject([
+                let arr: Array<(String, JsonValue)> = [
                     $(pairsOpt ?? Tokens())
-                ] |> filter { kv => kv[0] != "" } |> collectHashMap<String, JsonValue>)
+                ]
+                JsonObject(arr |> filter { kv => kv[0] != "" } |> collectHashMap<String, JsonValue>)
             }
         )
         ))
