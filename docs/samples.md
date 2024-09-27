@@ -24,10 +24,10 @@ struct Order {
 
     var status: String
 
-    @Field[skip=deserializing] // 创建时间默认值为当前时间，跳过反序列化
-    var createdAt: DateTime = DateTime.now()
+    @Field[skip=deserializing, format="yyyy-MM-dd", default=DateTime.now()] // 创建时间默认值为当前时间，跳过反序列化
+    var createdAt: DateTime
 
-    @Field[skip=all] // 跳过序列化和反序列化，系统日志不应暴露，也不应从外部修改
+    @Field[skip=all, default=""] // 跳过序列化和反序列化，系统日志不应暴露，也不应从外部修改
     var systemLog: String = "系统日志记录"
 
     @Field[skip=serializing] // 仅跳过序列化，缓存数据不会出现在输出的JSON中
@@ -55,7 +55,9 @@ main(): Int64 {
     var order = Order(
         orderId: 10001,
         status: "已支付",
+        createdAt: DateTime.now(),
         cache: "缓存数据",
+        systemLog: "",
         products: [product1, product2]
     )
 
@@ -87,7 +89,6 @@ main(): Int64 {
     }
     0
 }
-
 ```
 # @Json案例
 ```cj
