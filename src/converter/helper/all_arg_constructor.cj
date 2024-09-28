@@ -13,9 +13,9 @@ public func allNamedArgCtor(varDecls: Array<VarDecl>, attrs: HashMap<String, Has
     let paramsOpt = varDecls |>
         map {
         i => 
-        let eqDefault = if (optionVarNames.contains(i.identifier.value)) {
+        let eqDefault = if (defaultVarNames.contains(i.identifier.value)) {
             quote(= None)
-        } else if (defaultVarNames.contains(i.identifier.value)){
+        } else if (optionVarNames.contains(i.identifier.value)) {
             quote(= $(attrs[i.identifier.value]["default"]))
         } else {
             Tokens()
