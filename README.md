@@ -14,7 +14,26 @@ class Person {
     @Field[name="name"]
     var name: String
     @Field[default=0]
-    var age: Int
+    var age: Int64
+    // public func jusonSerialize(): JsonObject
+    // public func jusonDerialize(jsonValue: JsonValue): JsonObject
+    // public func jusonSerialize(jsonString: String): JsonObject
+}
+```
+
+### 自动生成全命名构造函数
+
+`Juson`宏会为类和结构体生成一个全是命名参数的构造函数，`default`属性值会作为构造函数中对应参数的默认值，`Option`参数默认值为`None`，但 `default`属性值优先于`None`。
+
+```cj
+@Juson
+class Person {
+    var name: String
+    var age: Int64
+    // public init(name!: String, age!: Int64) {
+    //     this.name = name
+    //     this.age = age
+    // }
 }
 ```
 
