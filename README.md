@@ -16,8 +16,8 @@ class Person {
     @Field[default=0]
     var age: Int64
     // public func jusonSerialize(): JsonObject
-    // public func jusonDerialize(jsonValue: JsonValue): JsonObject
-    // public func jusonSerialize(jsonString: String): JsonObject
+    // public func jusonDerialize(jsonValue: JsonValue): Person
+    // public func jusonDerialize(jsonString: String): Person
 }
 ```
 
