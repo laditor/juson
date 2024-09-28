@@ -28,9 +28,12 @@ class Person {
 ```cj
 @Juson
 class Person {
-    var name: String
-    var age: Int64
-    // public init(name!: String, age!: Int64) {
+    @Field[default="CJ"]
+    let name: String
+    @Field[default=0]
+    let age: ?Int64
+    var desc: ?String
+    // public init(name!: String = "CJ", age!: Int64 = 0, desc!: ?String = None) {
     //     this.name = name
     //     this.age = age
     // }
